@@ -1,0 +1,107 @@
+═══════════════════════════════════════════════════════════════════
+    INSTAGRAM SCHOOL FOLLOWER BOT - QUICK REFERENCE CARD
+═══════════════════════════════════════════════════════════════════
+
+📦 INSTALLATION (2 MINUTES)
+───────────────────────────────────────────────────────────────────
+1. Open: chrome://extensions/
+2. Enable: Developer mode (top-right)
+3. Click: "Load unpacked"
+4. Select: This folder
+5. Done! ✓
+
+🚀 FIRST USE (3 MINUTES)
+───────────────────────────────────────────────────────────────────
+1. Log into Instagram
+2. Click extension icon
+3. Select a school
+4. Click "Start Following"
+5. Watch it work!
+
+📊 STATISTICS YOU'LL SEE
+───────────────────────────────────────────────────────────────────
+• Current School: Which school being processed
+• Accounts Processed: 2/5 (current/total accounts)
+• Follows This Hour: 3/5 (current/max per hour)
+• Total Follows: 47/1000 (current/school max)
+
+⚙️ HOW IT WORKS
+───────────────────────────────────────────────────────────────────
+Opens Instagram account → Clicks Followers → Scrolls & collects ALL 
+usernames → Visits each profile → Checks bios → Follows if keyword 
+matches → Respects limits → Moves to next account
+
+⏱️ RATE LIMITS (AUTOMATIC)
+───────────────────────────────────────────────────────────────────
+• Max 5 follows per hour (enforced automatically)
+• Waits 1 hour after 5th follow
+• Resumes automatically after wait
+• No total follow limit (continues until all accounts done)
+
+🎓 YOUR 10 SCHOOLS
+───────────────────────────────────────────────────────────────────
+1. American Heritage Schools              → 5 accounts
+2. The Dalton School                      → 6 accounts
+3. The Quarry Lane School                 → 7 accounts
+4. Ethical Culture Fieldston School       → 4 accounts
+5. Blair Academy                          → 5 accounts
+6. The Village School                     → 6 accounts
+7. Ransom Everglades School               → 6 accounts
+8. Milton Academy                         → 8 accounts
+9. The Awty International School          → 6 accounts
+10. Georgetown Day School                 → 7 accounts
+
+⏰ EXPECTED TIMELINE
+───────────────────────────────────────────────────────────────────
+First follow:        2-5 minutes
+5 follows:           15-45 minutes
+Then waits:          1 hour (automatic)
+One school:          Hours to days (varies)
+
+🎮 CONTROLS
+───────────────────────────────────────────────────────────────────
+START:  Click "Start Following" button
+STOP:   Click "Stop" button (red)
+VIEW:   Open extension popup anytime
+
+⚠️ SAFETY RULES
+───────────────────────────────────────────────────────────────────
+✓ Use test account first
+✓ Let it wait full hour between batches
+✓ Monitor first few hours
+✓ Stop if Instagram shows warnings
+✗ Don't run 24/7
+✗ Don't bypass 5/hour limit
+✗ Don't ignore "Action Blocked"
+
+🐛 QUICK FIXES
+───────────────────────────────────────────────────────────────────
+Won't load?       → Enable Developer mode
+Won't start?      → Log into Instagram first
+No follows?       → Keywords might not match bios
+Action blocked?   → Stop bot, wait 24 hours
+Stuck?            → Check browser console (F12)
+
+📚 DOCUMENTATION FILES
+───────────────────────────────────────────────────────────────────
+GETTING_STARTED.md    → Quick setup guide (START HERE!)
+INSTALL.txt           → Simple installation steps
+README.md             → Complete documentation
+TESTING_GUIDE.md      → Testing and debugging
+PROJECT_SUMMARY.md    → What was created
+QUICK_REFERENCE.txt   → This file
+
+🔥 QUICK START NOW
+───────────────────────────────────────────────────────────────────
+1. chrome://extensions/
+2. Developer mode ON
+3. Load unpacked → Select this folder
+4. Click extension icon
+5. Select school
+6. Start!
+
+═══════════════════════════════════════════════════════════════════
+                    READY TO GO! 🚀
+           See GETTING_STARTED.md for details
+═══════════════════════════════════════════════════════════════════
+

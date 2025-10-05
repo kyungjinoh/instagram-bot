@@ -1,0 +1,39 @@
+QUICK INSTALLATION GUIDE
+========================
+
+Step 1: Open Chrome Extensions
+   - Open Chrome browser
+   - Go to: chrome://extensions/
+   - Or click Menu (⋮) > More Tools > Extensions
+
+Step 2: Enable Developer Mode
+   - Look for "Developer mode" toggle in the top-right
+   - Turn it ON
+
+Step 3: Load the Extension
+   - Click "Load unpacked" button
+   - Navigate to and select this folder:
+     /Users/kyungjinoh/Desktop/Coding/Instagram bot bot
+   - Click "Select Folder"
+
+Step 4: Pin the Extension
+   - Click the puzzle piece icon (🧩) in Chrome toolbar
+   - Find "Instagram School Follower"
+   - Click the pin icon to keep it visible
+
+Step 5: Use the Extension
+   - Log into Instagram in Chrome
+   - Click the extension icon in toolbar
+   - Select a school from dropdown
+   - Click "Start Following"
+   - Watch the bot work automatically!
+
+IMPORTANT NOTES:
+- You must be logged into Instagram
+- The bot respects 5 follows per hour
+- Keep the Instagram tab open while running
+- Don't close Chrome while the bot is active
+
+For full documentation, see README.md
+
+
