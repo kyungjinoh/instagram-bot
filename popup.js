@@ -98,34 +98,74 @@ async function startAutomation() {
   const schoolId = parseInt(document.getElementById('schoolSelect').value);
   const currentFollowing = parseInt(document.getElementById('currentFollowing').value) || 0;
   const startAccountIndex = parseInt(document.getElementById('accountSelect').value) || 0;
+  const ownUsername = document.getElementById('ownUsername').value.trim();
+  const enableFollowingExpansion = document.getElementById('enableFollowingExpansion').checked;
+  const startPhase = document.getElementById('startPhase').value;
   
-  if (isNaN(schoolId)) {
+  if (!ownUsername) {
+    showStatus('Please enter your Instagram username', 'error');
+    return;
+  }
+  
+  // Validate school selection only if starting from school phase
+  if (startPhase === 'school' && isNaN(schoolId)) {
     showStatus('Please select a school', 'error');
     return;
   }
   
-  const school = schools[schoolId];
+  let school = null;
+  let validStartIndex = 0;
+  let instagramIds = [];
+  let abbreviations = [];
+  let schoolName = '';
+  let totalAccounts = 0;
   
-  // Validate starting account index
-  const validStartIndex = Math.max(0, Math.min(startAccountIndex, school.instagramIds.length - 1));
+  if (startPhase === 'school' && !isNaN(schoolId)) {
+    school = schools[schoolId];
+    schoolName = school.name;
+    instagramIds = school.instagramIds;
+    abbreviations = school.abbreviations;
+    totalAccounts = school.instagramIds.length;
+    validStartIndex = Math.max(0, Math.min(startAccountIndex, school.instagramIds.length - 1));
+  } else if (startPhase === 'following_expansion') {
+    // For following expansion, we still need abbreviations for filtering
+    // Use the selected school's abbreviations if available, otherwise empty
+    if (!isNaN(schoolId)) {
+      school = schools[schoolId];
+      abbreviations = school.abbreviations;
+      schoolName = school.name;
+    } else {
+      // Default to empty - will match all users
+      abbreviations = [];
+      schoolName = 'Any School';
+    }
+  }
   
   // Save configuration to storage
   const config = {
     active: true,
+    phase: startPhase, // 'school' or 'following_expansion'
+    ownUsername: ownUsername,
+    enableFollowingExpansion: enableFollowingExpansion,
     schoolId: schoolId,
-    schoolName: school.name,
-    instagramIds: school.instagramIds,
-    abbreviations: school.abbreviations,
+    schoolName: schoolName,
+    instagramIds: instagramIds,
+    abbreviations: abbreviations,
     currentFollowing: currentFollowing,
     currentAccountIndex: validStartIndex,
     totalFollows: 0,
     followsThisHour: 0,
     lastFollowTime: null,
     hourResetTime: Date.now() + 3600000, // 1 hour from now
-    totalAccounts: school.instagramIds.length,
+    totalAccounts: totalAccounts,
     currentAccountFollowers: [],
     followersCollected: false,
-    currentFollowerIndex: 0
+    currentFollowerIndex: 0,
+    // Following expansion phase data
+    followingList: [],
+    followingCollected: false,
+    currentFollowingIndex: 0,
+    processedFollowingAccounts: []
   };
   
   await chrome.storage.local.set({ config: config });
@@ -136,13 +176,24 @@ async function startAutomation() {
   showStatus('Starting automation...', 'success');
   updateStats(config);
   
-  // Open selected Instagram account
-  const startAccount = school.instagramIds[validStartIndex];
-  const startMessage = validStartIndex === 0 ? 'Starting from first account' : `Starting from account ${validStartIndex + 1}/${school.instagramIds.length}`;
-  showStatus(`${startMessage}: ${startAccount}`, 'info');
+  // Open appropriate Instagram page based on starting phase
+  let startUrl = '';
+  let startMessage = '';
+  
+  if (startPhase === 'school') {
+    const startAccount = school.instagramIds[validStartIndex];
+    startMessage = validStartIndex === 0 ? 'Starting from first school account' : `Starting from school account ${validStartIndex + 1}/${school.instagramIds.length}`;
+    startMessage += `: ${startAccount}`;
+    startUrl = `https://www.instagram.com/${startAccount}/`;
+  } else if (startPhase === 'following_expansion') {
+    startMessage = `Starting Following Expansion from your profile: ${ownUsername}`;
+    startUrl = `https://www.instagram.com/${ownUsername}/`;
+  }
+  
+  showStatus(startMessage, 'info');
   
   chrome.tabs.create({ 
-    url: `https://www.instagram.com/${startAccount}/`,
+    url: startUrl,
     active: true
   });
   
@@ -174,6 +225,31 @@ async function loadState() {
     document.getElementById('schoolSelect').value = result.config.schoolId;
     populateAccounts(result.config.schoolId);
     document.getElementById('accountSelect').value = result.config.currentAccountIndex;
+    if (result.config.ownUsername) {
+      document.getElementById('ownUsername').value = result.config.ownUsername;
+    }
+    if (result.config.enableFollowingExpansion !== undefined) {
+      document.getElementById('enableFollowingExpansion').checked = result.config.enableFollowingExpansion;
+    }
+    if (result.config.phase) {
+      document.getElementById('startPhase').value = result.config.phase;
+      toggleAccountSelectVisibility();
+    }
+  }
+}
+
+// Toggle visibility of account select based on start phase
+function toggleAccountSelectVisibility() {
+  const startPhase = document.getElementById('startPhase').value;
+  const accountSelectGroup = document.getElementById('accountSelectGroup');
+  const schoolSelect = document.getElementById('schoolSelect');
+  
+  if (startPhase === 'following_expansion') {
+    accountSelectGroup.style.display = 'none';
+    schoolSelect.required = false;
+  } else {
+    accountSelectGroup.style.display = 'block';
+    schoolSelect.required = true;
   }
 }
 
@@ -187,6 +263,7 @@ document.getElementById('stopBtn').addEventListener('click', stopAutomation);
 document.getElementById('schoolSelect').addEventListener('change', function() {
   populateAccounts(this.value);
 });
+document.getElementById('startPhase').addEventListener('change', toggleAccountSelectVisibility);
 
 // Listen for updates from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

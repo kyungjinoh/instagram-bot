@@ -156,10 +156,17 @@
     <h1>📸 Instagram Follower Bot</h1>
     
     <div class="form-group">
-      <label for="schoolSelect">Select School:</label>
+      <label for="schoolSelect">Select School (optional for Following Expansion):</label>
       <select id="schoolSelect">
         <option value="">-- Choose a school --</option>
       </select>
+      <div class="small-text">For Following Expansion, leave blank to match all users or select a school to filter by keywords</div>
+    </div>
+    
+    <div class="form-group">
+      <label for="ownUsername">Your Instagram Username:</label>
+      <input type="text" id="ownUsername" placeholder="e.g., ncp_clickers" required>
+      <div class="small-text">Required for following expansion phase</div>
     </div>
     
     <div class="form-group">
@@ -168,11 +175,28 @@
     </div>
     
     <div class="form-group">
+      <label for="startPhase">Start Phase:</label>
+      <select id="startPhase">
+        <option value="school">School Accounts (Phase 1)</option>
+        <option value="following_expansion">Following Expansion (Phase 2)</option>
+      </select>
+      <div class="small-text">Choose which phase to start from</div>
+    </div>
+    
+    <div class="form-group" id="accountSelectGroup">
       <label for="accountSelect">Start from Account (optional):</label>
       <select id="accountSelect">
         <option value="">-- Start from first account --</option>
       </select>
-      <div class="small-text">Leave blank to start from the first account</div>
+      <div class="small-text">Only applies to School Accounts phase</div>
+    </div>
+    
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="enableFollowingExpansion" checked>
+        Enable Following Expansion (crawl your following's followers)
+      </label>
+      <div class="small-text">After school accounts, bot will process followers of accounts you follow</div>
     </div>
     
     <button id="startBtn">Start Following</button>

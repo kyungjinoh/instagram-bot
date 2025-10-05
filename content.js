@@ -194,6 +194,198 @@
     return null;
   }
   
+  // Find following link/button
+  function findFollowingButton() {
+    // Look for "following" text in various elements
+    const links = Array.from(document.querySelectorAll('a'));
+    for (const link of links) {
+      const text = link.textContent.toLowerCase();
+      // Match "following" but not "followers"
+      if ((text.includes('following') || text.includes('팔로잉')) && !text.includes('follower')) {
+        return link;
+      }
+    }
+    
+    // Alternative: Look for specific span elements
+    const spans = Array.from(document.querySelectorAll('span'));
+    for (const span of spans) {
+      const text = span.textContent.toLowerCase();
+      if ((text.includes('following') || text.includes('팔로잉')) && !text.includes('follower')) {
+        // Click the parent link
+        const link = span.closest('a');
+        if (link) return link;
+      }
+    }
+    
+    return null;
+  }
+  
+  // Collect following usernames (similar to getFollowerUsernames but for following dialog)
+  function getFollowingUsernames() {
+    const usernames = new Set();
+    
+    // Look for username links in the following dialog
+    const links = Array.from(document.querySelectorAll('a[href^="/"]'));
+    for (const link of links) {
+      const href = link.getAttribute('href');
+      // Filter for username links (not post links, not hashtags, etc.)
+      if (href && href.match(/^\/[a-zA-Z0-9._]+\/?$/) && !href.includes('/p/')) {
+        const username = href.replace(/\//g, '');
+        const span = link.querySelector('span');
+        if (span && span.textContent === username) {
+          usernames.add(username);
+        }
+      }
+    }
+    
+    return Array.from(usernames);
+  }
+  
+  // Scroll and collect all following accounts
+  async function scrollAndCollectAllFollowing() {
+    console.log('🚀 Starting to scroll and collect ALL following accounts...');
+    isScrollingFollowers = true;
+    
+    const dialog = document.querySelector('div[role="dialog"]');
+    if (!dialog) {
+      console.log('❌ Following dialog not found');
+      isScrollingFollowers = false;
+      return [];
+    }
+    
+    console.log('✅ Found following dialog');
+    
+    // Find the actual scrollable following list container
+    const scrollableDiv = findScrollableFollowersList(dialog);
+    if (!scrollableDiv) {
+      console.log('❌ Could not find scrollable following list');
+      console.log('⚠️ Attempting to collect visible following only...');
+      // Collect whatever following are visible
+      const visibleFollowing = getFollowingUsernames();
+      isScrollingFollowers = false;
+      return visibleFollowing;
+    }
+    
+    console.log(`📏 Initial - Client height: ${scrollableDiv.clientHeight}, Scroll height: ${scrollableDiv.scrollHeight}`);
+    
+    let allFollowing = new Set();
+    let scrollAttempts = 0;
+    let consecutiveNoChangeCount = 0;
+    let lastScrollTop = -1;
+    const maxConsecutiveNoChange = 8;
+    const maxTotalAttempts = 1000;
+    
+    await updateConfig({
+      status: 'Scrolling following list...',
+      statusType: 'info'
+    });
+    
+    while (consecutiveNoChangeCount < maxConsecutiveNoChange && scrollAttempts < maxTotalAttempts) {
+      scrollAttempts++;
+      
+      const beforeScrollFollowing = getFollowingUsernames();
+      beforeScrollFollowing.forEach(username => allFollowing.add(username));
+      
+      const beforeCount = allFollowing.size;
+      console.log(`\n📊 Scroll attempt ${scrollAttempts}: ${beforeCount} following collected so far`);
+      
+      if (scrollAttempts % 5 === 0) {
+        await updateConfig({
+          status: `Scrolling following... collected ${beforeCount} accounts (attempt ${scrollAttempts})`,
+          statusType: 'info'
+        });
+      }
+      
+      const beforeScrollTop = scrollableDiv.scrollTop;
+      const beforeScrollHeight = scrollableDiv.scrollHeight;
+      
+      // Scroll to the absolute bottom
+      const targetScroll = scrollableDiv.scrollHeight;
+      scrollableDiv.scrollTop = targetScroll;
+      
+      try {
+        scrollableDiv.scrollTo(0, targetScroll);
+        scrollableDiv.scrollBy(0, 10000);
+      } catch (e) {
+        // Ignore errors
+      }
+      
+      await randomDelay(1000, 1500);
+      
+      const afterScrollTop = scrollableDiv.scrollTop;
+      
+      if (lastScrollTop !== -1 && Math.abs(afterScrollTop - lastScrollTop) < 5) {
+        console.log('⚠️ Scroll position hasn\'t changed from last attempt - might be at bottom');
+      }
+      lastScrollTop = afterScrollTop;
+      
+      console.log('⏳ Waiting for new content to load...');
+      const loadingOccurred = await waitForLoadingComplete(8000);
+      
+      if (loadingOccurred) {
+        console.log('✅ Loading spinner detected - new content loaded');
+        await randomDelay(1500, 2000);
+      } else {
+        await randomDelay(1000, 1500);
+      }
+      
+      const afterScrollFollowing = getFollowingUsernames();
+      afterScrollFollowing.forEach(username => allFollowing.add(username));
+      
+      const afterCount = allFollowing.size;
+      const newFollowing = afterCount - beforeCount;
+      
+      console.log(`📈 After loading: ${afterCount} total (➕ ${newFollowing} new this scroll)`);
+      
+      if (newFollowing === 0) {
+        consecutiveNoChangeCount++;
+        console.log(`🔴 No new following (${consecutiveNoChangeCount}/${maxConsecutiveNoChange} strikes)`);
+        
+        if (consecutiveNoChangeCount <= 3) {
+          console.log(`🔄 No-change #${consecutiveNoChangeCount}, trying aggressive scroll...`);
+          for (let i = 0; i < 5; i++) {
+            scrollableDiv.scrollTop = scrollableDiv.scrollHeight + 10000;
+            scrollableDiv.scrollBy(0, 5000);
+            await randomDelay(400, 700);
+          }
+          await randomDelay(2000, 3000);
+          
+          const afterAggressiveFollowing = getFollowingUsernames();
+          afterAggressiveFollowing.forEach(username => allFollowing.add(username));
+          const afterAggressiveCount = allFollowing.size;
+          const foundAfterAggressive = afterAggressiveCount - afterCount;
+          
+          if (foundAfterAggressive > 0) {
+            console.log(`✅ Aggressive scroll found ${foundAfterAggressive} more following!`);
+            consecutiveNoChangeCount = 0;
+          }
+        }
+      } else {
+        consecutiveNoChangeCount = 0;
+        console.log(`✅ Found ${newFollowing} new following! Resetting counter, continuing...`);
+      }
+    }
+    
+    const finalList = Array.from(allFollowing);
+    
+    if (scrollAttempts >= maxTotalAttempts) {
+      console.log(`⚠️ Reached maximum scroll attempts (${maxTotalAttempts})`);
+    } else {
+      console.log(`✅ Reached bottom after ${consecutiveNoChangeCount} consecutive no-change scrolls`);
+    }
+    
+    console.log(`\n🎉 FINISHED! Total following collected: ${finalList.length}`);
+    console.log(`📊 Total scroll attempts: ${scrollAttempts}`);
+    
+    await updateConfig({
+      status: `✅ Collected ${finalList.length} following accounts (${scrollAttempts} scrolls)`,
+      statusType: 'success'
+    });
+    
+    isScrollingFollowers = false;
+    return finalList;
+  }
+  
   // Get list of follower usernames from the dialog (excluding already followed/requested)
   function getFollowerUsernames() {
     const usernames = new Set();
@@ -518,6 +710,12 @@
   
   // Check if bio contains abbreviation
   function checkBioForAbbreviation(bioText, abbreviations) {
+    // If no abbreviations specified, match all users
+    if (!abbreviations || abbreviations.length === 0) {
+      console.log('✅ No abbreviations specified - matching all users');
+      return true;
+    }
+    
     if (!bioText) {
       console.log('❌ No bio text to check');
       return false;
@@ -880,6 +1078,250 @@
         return;
       }
       
+      // ============= FOLLOWING EXPANSION PHASE =============
+      // Process accounts from own following list
+      
+      if (config.phase === 'following_expansion') {
+        console.log('📢 Following Expansion Phase active');
+        
+        // State 1: On own profile, need to click following
+        if (currentUrl.includes(`instagram.com/${config.ownUsername}`) && !currentUrl.includes('/following')) {
+          await randomDelay(2000, 4000);
+          
+          const followingBtn = findFollowingButton();
+          if (followingBtn) {
+            console.log('Clicking following button...');
+            followingBtn.click();
+            await randomDelay(3000, 5000);
+          } else {
+            console.log('⚠️ Following button not found');
+          }
+        }
+        
+        // State 2: On following page - collect all following accounts
+        else if (currentUrl.includes('/following') && !config.followingCollected) {
+          console.log('On following page, collecting all following accounts...');
+          
+          const allFollowing = await scrollAndCollectAllFollowing();
+          
+          if (allFollowing.length === 0) {
+            console.log('No following found, stopping bot');
+            await updateConfig({ 
+              active: false,
+              status: 'No following accounts found',
+              statusType: 'error'
+            });
+            return;
+          }
+          
+          // Filter out already processed accounts
+          const unprocessedFollowing = allFollowing.filter(
+            username => !config.processedFollowingAccounts.includes(username)
+          );
+          
+          console.log(`📊 Total following: ${allFollowing.length}, Unprocessed: ${unprocessedFollowing.length}`);
+          
+          if (unprocessedFollowing.length === 0) {
+            console.log('✅ All following accounts have been processed!');
+            await updateConfig({ 
+              active: false,
+              status: 'All following accounts processed!',
+              statusType: 'success'
+            });
+            return;
+          }
+          
+          config.followingList = unprocessedFollowing;
+          config.followingCollected = true;
+          config.currentFollowingIndex = 0;
+          
+          await updateConfig({
+            followingList: unprocessedFollowing,
+            followingCollected: true,
+            currentFollowingIndex: 0,
+            status: `Ready to process ${unprocessedFollowing.length} following accounts`,
+            statusType: 'success'
+          });
+          
+          // Close the dialog
+          const dialog = document.querySelector('div[role="dialog"]');
+          if (dialog) {
+            const closeButton = dialog.querySelector('svg[aria-label="Close"], button[aria-label="Close"]');
+            if (closeButton) {
+              closeButton.click();
+            }
+          }
+          
+          await randomDelay(2000, 3000);
+        }
+        
+        // State 3: Following collected, navigate to first following account
+        else if (config.followingCollected && config.currentFollowingIndex < config.followingList.length && !config.followersCollected) {
+          const currentFollowingAccount = config.followingList[config.currentFollowingIndex];
+          
+          // Check if we're on the following account's page
+          if (currentUrl.includes(`instagram.com/${currentFollowingAccount}`) && !currentUrl.includes('/followers')) {
+            console.log(`On following account page: ${currentFollowingAccount}, clicking followers...`);
+            await randomDelay(2000, 4000);
+            
+            const followersBtn = findFollowersButton();
+            if (followersBtn) {
+              console.log('Clicking followers button...');
+              followersBtn.click();
+              await randomDelay(3000, 5000);
+            }
+          } else if (!currentUrl.includes(`instagram.com/${currentFollowingAccount}`)) {
+            // Navigate to the following account
+            console.log(`Navigating to following account: ${currentFollowingAccount}`);
+            if (!safeNavigate(`https://www.instagram.com/${currentFollowingAccount}/`)) {
+              return;
+            }
+            await randomDelay(2000, 3000);
+          }
+        }
+        
+        // State 4: On followers page of a following account - collect followers
+        else if (config.followingCollected && currentUrl.includes('/followers') && !config.followersCollected) {
+          console.log('On followers page of following account, collecting followers...');
+          
+          const allFollowers = await scrollAndCollectAllFollowers();
+          
+          if (allFollowers.length === 0) {
+            console.log('No followers found for this following account, moving to next');
+            
+            // Mark this following account as processed
+            config.processedFollowingAccounts.push(config.followingList[config.currentFollowingIndex]);
+            await updateConfig({
+              processedFollowingAccounts: config.processedFollowingAccounts
+            });
+            
+            await moveToNextFollowingAccount();
+            return;
+          }
+          
+          config.currentAccountFollowers = allFollowers;
+          config.followersCollected = true;
+          config.currentFollowerIndex = 0;
+          
+          await updateConfig({
+            currentAccountFollowers: allFollowers,
+            followersCollected: true,
+            currentFollowerIndex: 0,
+            status: `Ready to process ${allFollowers.length} followers from following account`,
+            statusType: 'success'
+          });
+          
+          // Close the dialog
+          const dialog = document.querySelector('div[role="dialog"]');
+          if (dialog) {
+            const closeButton = dialog.querySelector('svg[aria-label="Close"], button[aria-label="Close"]');
+            if (closeButton) {
+              closeButton.click();
+            }
+          }
+          
+          await randomDelay(2000, 3000);
+        }
+        
+        // State 5: Followers collected, visit each one
+        else if (config.followersCollected && config.currentFollowerIndex < config.currentAccountFollowers.length) {
+          const currentFollowingAccount = config.followingList[config.currentFollowingIndex];
+          const onProfilePage = currentUrl.match(/instagram\.com\/[a-zA-Z0-9._]+\/?$/) && 
+                                !currentUrl.includes(currentFollowingAccount) &&
+                                !currentUrl.includes(config.ownUsername) &&
+                                !currentUrl.includes('/followers');
+          
+          if (onProfilePage) {
+            // We're on a follower's profile, check bio and follow
+            console.log('On follower profile page, checking bio...');
+            await randomDelay(2000, 3000);
+            
+            // Check if already following
+            if (isAlreadyFollowing()) {
+              console.log('Already following this user');
+              
+              config.currentFollowerIndex++;
+              await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+              
+              // Navigate to next profile or move to next following account
+              if (config.currentFollowerIndex < config.currentAccountFollowers.length) {
+                const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
+                console.log(`Moving to next follower: ${nextUsername}`);
+                safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+              } else {
+                // Mark this following account as processed
+                config.processedFollowingAccounts.push(currentFollowingAccount);
+                await updateConfig({
+                  processedFollowingAccounts: config.processedFollowingAccounts
+                });
+                await moveToNextFollowingAccount();
+              }
+              
+              isProcessing = false;
+              return;
+            }
+            
+            // Get bio and check for abbreviations
+            console.log('\n🔎 STARTING BIO CHECK...');
+            const bio = getBioText();
+            const hasAbbreviation = checkBioForAbbreviation(bio, config.abbreviations);
+            
+            if (hasAbbreviation) {
+              const followed = findAndClickFollowButton();
+              
+              if (followed) {
+                console.log('Followed user!');
+                config.totalFollows++;
+                config.followsThisHour++;
+                
+                await updateConfig({
+                  totalFollows: config.totalFollows,
+                  followsThisHour: config.followsThisHour,
+                  status: `Followed ${config.totalFollows} users (Following Expansion: ${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length})`,
+                  statusType: 'success'
+                });
+                
+                await randomDelay(3000, 5000);
+              }
+            }
+            
+            // Move to next follower
+            config.currentFollowerIndex++;
+            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+            
+            // Check if we've processed all followers from this following account
+            if (config.currentFollowerIndex >= config.currentAccountFollowers.length) {
+              console.log('Finished processing all followers for this following account');
+              
+              // Mark this following account as processed
+              config.processedFollowingAccounts.push(currentFollowingAccount);
+              await updateConfig({
+                processedFollowingAccounts: config.processedFollowingAccounts
+              });
+              
+              await moveToNextFollowingAccount();
+              return;
+            }
+            
+            // Navigate to next profile
+            const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
+            console.log(`Moving to next follower profile: ${nextUsername}`);
+            safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+            await randomDelay(2000, 3000);
+            
+          } else {
+            // Navigate to first follower
+            const firstUsername = config.currentAccountFollowers[config.currentFollowerIndex];
+            console.log(`Navigating to follower: ${firstUsername}`);
+            
+            if (!safeNavigate(`https://www.instagram.com/${firstUsername}/`)) {
+              return;
+            }
+            await randomDelay(2000, 3000);
+          }
+        }
+      }
+      
     } catch (error) {
       console.error('Error in automation:', error);
     }
@@ -887,7 +1329,7 @@
     isProcessing = false;
   }
   
-  // Move to next Instagram account
+  // Move to next Instagram account (or transition to following expansion phase)
   async function moveToNextAccount() {
     console.log('Moving to next account...');
     
@@ -897,13 +1339,40 @@
     config.currentFollowerIndex = 0;
     
     if (config.currentAccountIndex >= config.instagramIds.length) {
-      // All accounts processed
-      await updateConfig({ 
-        active: false,
-        status: 'Completed! All accounts processed.',
-        statusType: 'success'
-      });
-      return;
+      // All school accounts processed
+      
+      if (config.enableFollowingExpansion && config.phase === 'school') {
+        // Transition to following expansion phase
+        console.log('🎉 School accounts completed! Starting Following Expansion Phase...');
+        
+        await updateConfig({ 
+          phase: 'following_expansion',
+          followingList: [],
+          followingCollected: false,
+          currentFollowingIndex: 0,
+          currentAccountFollowers: [],
+          followersCollected: false,
+          currentFollowerIndex: 0,
+          status: 'Phase 1 complete! Starting to process your following...',
+          statusType: 'success'
+        });
+        
+        // Navigate to own profile
+        await randomDelay(2000, 3000);
+        if (!safeNavigate(`https://www.instagram.com/${config.ownUsername}/`)) {
+          return;
+        }
+        
+        return;
+      } else {
+        // All done
+        await updateConfig({ 
+          active: false,
+          status: 'Completed! All accounts processed.',
+          statusType: 'success'
+        });
+        return;
+      }
     }
     
     await updateConfig({
@@ -916,6 +1385,56 @@
     });
     
     const nextAccount = config.instagramIds[config.currentAccountIndex];
+    if (!safeNavigate(`https://www.instagram.com/${nextAccount}/`)) {
+      return; // Navigation was blocked by anti-loop protection
+    }
+    await randomDelay(3000, 5000);
+  }
+  
+  // Move to next following account in expansion phase
+  async function moveToNextFollowingAccount() {
+    console.log('Moving to next following account...');
+    
+    config.currentFollowingIndex++;
+    config.currentAccountFollowers = [];
+    config.followersCollected = false;
+    config.currentFollowerIndex = 0;
+    
+    // Filter out already processed following accounts
+    let unprocessedFollowing = config.followingList.filter(
+      username => !config.processedFollowingAccounts.includes(username)
+    );
+    
+    if (config.currentFollowingIndex >= unprocessedFollowing.length) {
+      // All following accounts in this batch processed
+      console.log('🎉 Batch complete! Refreshing following list to check for new accounts...');
+      
+      await updateConfig({ 
+        followingCollected: false,
+        currentFollowingIndex: 0,
+        status: 'Refreshing following list for new accounts...',
+        statusType: 'info'
+      });
+      
+      // Navigate to own profile to refresh following list
+      await randomDelay(2000, 3000);
+      if (!safeNavigate(`https://www.instagram.com/${config.ownUsername}/`)) {
+        return;
+      }
+      
+      return;
+    }
+    
+    await updateConfig({
+      currentFollowingIndex: config.currentFollowingIndex,
+      currentAccountFollowers: [],
+      followersCollected: false,
+      currentFollowerIndex: 0,
+      status: `Processing following ${config.currentFollowingIndex + 1}/${unprocessedFollowing.length}`,
+      statusType: 'info'
+    });
+    
+    const nextAccount = unprocessedFollowing[config.currentFollowingIndex];
     if (!safeNavigate(`https://www.instagram.com/${nextAccount}/`)) {
       return; // Navigation was blocked by anti-loop protection
     }
@@ -941,8 +1460,13 @@
       return;
     }
     
-    console.log('Instagram automation initialized with new workflow');
-    console.log('Workflow: Collect ALL followers → Visit each profile → Move to next account');
+    console.log('🤖 Instagram automation initialized with TWO-PHASE workflow');
+    console.log('📋 PHASE 1 (School): Collect ALL followers → Visit each profile → Move to next account');
+    if (config.enableFollowingExpansion) {
+      console.log('📋 PHASE 2 (Following Expansion): Go to own profile → Get following list → For each following account, process their followers');
+      console.log('♻️ Phase 2 repeats continuously, refreshing following list to find new accounts');
+    }
+    console.log(`👤 Own profile: @${config.ownUsername}`);
     
     // Start processing loop
     setInterval(processAutomation, 8000);
