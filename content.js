@@ -7,12 +7,56 @@
   let isScrollingFollowers = false;
   let lastNavigationTime = 0;
   let navigationCount = 0;
+  let lastProfileVisitTime = 0;
+  let processedAccountsCount = 0;
   
   // Utility: Wait for a random time to appear more human-like
   function randomDelay(min = 2000, max = 5000) {
     return new Promise(resolve => {
       setTimeout(resolve, Math.random() * (max - min) + min);
     });
+  }
+
+  // Rate limiting: Check if enough time has passed since last profile visit
+  function canVisitProfile() {
+    const now = Date.now();
+    const timeSinceLastVisit = now - lastProfileVisitTime;
+    const requiredDelay = 30000; // 30 seconds between profile visits
+    
+    console.log(`🔍 Rate limit check - Last visit: ${lastProfileVisitTime}, Now: ${now}, Time since: ${timeSinceLastVisit}ms, Required: ${requiredDelay}ms`);
+    
+    if (timeSinceLastVisit < requiredDelay) {
+      const remainingTime = Math.ceil((requiredDelay - timeSinceLastVisit) / 1000);
+      console.log(`⏳ Rate limit: Waiting ${remainingTime} more seconds before next profile visit`);
+      return false;
+    }
+    
+    console.log(`✅ Rate limit passed - ${timeSinceLastVisit}ms since last visit (required: ${requiredDelay}ms)`);
+    return true;
+  }
+
+  // Break logic: Check if we need a break after every 5 accounts
+  async function checkForBreak() {
+    processedAccountsCount++;
+    
+    if (processedAccountsCount % 5 === 0) {
+      console.log(`🛑 Break time! Processed ${processedAccountsCount} accounts. Taking 1-minute break...`);
+      
+      await updateConfig({
+        status: `Taking 1-minute break after ${processedAccountsCount} accounts`,
+        statusType: 'info'
+      });
+      
+      // 1-minute break
+      await new Promise(resolve => setTimeout(resolve, 60000));
+      
+      console.log('✅ Break completed, resuming automation...');
+      
+      await updateConfig({
+        status: 'Break completed, resuming automation',
+        statusType: 'success'
+      });
+    }
   }
   
   // Utility: Wait for element to appear
@@ -863,7 +907,10 @@
   
   // Main automation logic
   async function processAutomation() {
+    console.log(`🔍 processAutomation called - isProcessing: ${isProcessing}, config.active: ${config?.active}, isScrollingFollowers: ${isScrollingFollowers}`);
+    
     if (isProcessing || !config || !config.active || isScrollingFollowers) {
+      console.log(`⏭️ Skipping automation - isProcessing: ${isProcessing}, config.active: ${config?.active}, isScrollingFollowers: ${isScrollingFollowers}`);
       return;
     }
     
@@ -906,6 +953,160 @@
         config.currentAccountFollowers = [];
         config.followersCollected = false;
         config.currentFollowerIndex = 0;
+      }
+      
+      // Test Mode: Process specific test profiles
+      if (config.testMode) {
+        console.log('🧪 TEST MODE: Processing test profiles');
+        console.log(`🧪 Current URL: ${currentUrl}`);
+        console.log(`🧪 Test profiles: ${config.testProfiles?.join(', ')}`);
+        console.log(`🧪 Current follower index: ${config.currentFollowerIndex}`);
+        console.log(`🧪 Followers collected: ${config.followersCollected}`);
+        
+        // Initialize test profiles if not already done
+        if (!config.currentAccountFollowers || config.currentAccountFollowers.length === 0) {
+          console.log('🧪 Initializing test profiles...');
+          config.currentAccountFollowers = config.testProfiles || [];
+          config.followersCollected = true;
+          config.currentFollowerIndex = 0;
+          
+          await updateConfig({
+            currentAccountFollowers: config.currentAccountFollowers,
+            followersCollected: true,
+            currentFollowerIndex: 0,
+            status: `🧪 TEST MODE: Ready to process ${config.currentAccountFollowers.length} test profiles`,
+            statusType: 'success'
+          });
+          console.log('🧪 Test profiles initialized');
+        }
+        
+        // Check if we're on a test profile page
+        const currentTestProfile = config.currentAccountFollowers[config.currentFollowerIndex];
+        const onTestProfilePage = currentUrl.includes(`instagram.com/${currentTestProfile}`);
+        
+        console.log(`🧪 Current test profile: ${currentTestProfile}`);
+        console.log(`🧪 On test profile page: ${onTestProfilePage}`);
+        console.log(`🧪 URL contains profile: ${currentUrl.includes(`instagram.com/${currentTestProfile}`)}`);
+        
+        if (onTestProfilePage) {
+          console.log(`🧪 TEST MODE: Processing profile ${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length}: ${currentTestProfile}`);
+          console.log(`🧪 TEST MODE: lastProfileVisitTime = ${lastProfileVisitTime}, current time = ${Date.now()}`);
+          
+          await randomDelay(2000, 3000);
+          
+          // Check if already following
+          if (isAlreadyFollowing()) {
+            console.log(`🧪 TEST MODE: Already following ${currentTestProfile}`);
+          } else {
+            // Get bio and check for school abbreviations (same logic as normal mode)
+            console.log('\n🔎 TEST MODE: Checking bio for school keywords...');
+            const bio = getBioText();
+            console.log(`🧪 TEST MODE: Bio found: "${bio}"`);
+            
+            // Use the same abbreviation matching logic as normal mode
+            const hasAbbreviation = checkBioForAbbreviation(bio, config.abbreviations);
+            console.log(`🧪 TEST MODE: Keywords to match: [${config.abbreviations.join(', ')}]`);
+            console.log(`🧪 TEST MODE: Match found: ${hasAbbreviation ? 'YES' : 'NO'}`);
+            
+            if (hasAbbreviation) {
+              // Check rate limiting before following
+              if (!canVisitProfile()) {
+                console.log('🧪 TEST MODE: Rate limited, skipping follow');
+                isProcessing = false;
+                return;
+              }
+              
+              const followed = findAndClickFollowButton();
+              
+              if (followed) {
+                console.log(`🧪 TEST MODE: Followed ${currentTestProfile} (bio matched keywords)!`);
+                lastProfileVisitTime = Date.now(); // Mark profile visit time after following
+                config.totalFollows++;
+                config.followsThisHour++;
+                
+                await updateConfig({
+                  totalFollows: config.totalFollows,
+                  followsThisHour: config.followsThisHour,
+                  status: `🧪 TEST MODE: Followed ${config.totalFollows} profiles (${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length})`,
+                  statusType: 'success'
+                });
+                
+                await randomDelay(3000, 5000);
+              }
+            } else {
+              console.log(`🧪 TEST MODE: Bio doesn't contain school keywords for ${currentTestProfile}, skipping follow`);
+            }
+          }
+          
+          // Check for break before navigation
+          await checkForBreak();
+          
+          // Check if we've processed all test profiles
+          if (config.currentFollowerIndex + 1 >= config.currentAccountFollowers.length) {
+            console.log('🧪 TEST MODE: Finished processing all test profiles!');
+            config.currentFollowerIndex++;
+            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+            await updateConfig({ 
+              active: false,
+              status: '🧪 TEST MODE: All test profiles processed!',
+              statusType: 'success'
+            });
+            return;
+          }
+          
+          // Navigate to next test profile
+          const nextIndex = config.currentFollowerIndex + 1;
+          const nextTestProfile = config.currentAccountFollowers[nextIndex];
+          console.log(`🧪 TEST MODE: Moving to next profile: ${nextTestProfile}`);
+          
+          await updateConfig({
+            status: `🧪 TEST MODE: Processing ${nextIndex + 1}/${config.currentAccountFollowers.length}`,
+            statusType: 'info'
+          });
+          
+          // Always wait 30 seconds before navigation
+          console.log(`⏳ [Test Mode] Waiting 30 seconds before navigating to ${nextTestProfile}...`);
+          await new Promise(resolve => setTimeout(resolve, 30000));
+          console.log(`✅ [Test Mode] 30-second wait completed, navigating to ${nextTestProfile}`);
+          
+          // Navigate to next test profile
+          console.log(`🧭 [Test Mode] Navigating to ${nextTestProfile}...`);
+          const navigateResult = safeNavigate(`https://www.instagram.com/${nextTestProfile}/`);
+          console.log(`🧭 [Test Mode] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+          if (navigateResult) {
+            console.log(`🧭 [Test Mode] Navigation initiated to: https://www.instagram.com/${nextTestProfile}/`);
+            // Only increment index and mark visit time after successful navigation
+            lastProfileVisitTime = Date.now(); // Mark profile visit time after successful navigation
+            config.currentFollowerIndex = nextIndex;
+            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+          }
+          await randomDelay(2000, 3000);
+          
+        } else {
+          // Navigate to first test profile
+          const firstTestProfile = config.currentAccountFollowers[config.currentFollowerIndex];
+          console.log(`🧪 TEST MODE: Navigating to first test profile: ${firstTestProfile}`);
+          
+          // Always wait 30 seconds before navigation (except for first profile)
+          if (lastProfileVisitTime > 0) {
+            console.log(`⏳ [Test Mode] Waiting 30 seconds before navigating to ${firstTestProfile}...`);
+            await new Promise(resolve => setTimeout(resolve, 30000));
+            console.log(`✅ [Test Mode] 30-second wait completed, navigating to ${firstTestProfile}`);
+          } else {
+            console.log(`✅ [Test Mode] First profile, no wait needed for ${firstTestProfile}`);
+          }
+          const navigateResult = safeNavigate(`https://www.instagram.com/${firstTestProfile}/`);
+          console.log(`🧭 [Test Mode] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+          if (navigateResult) {
+            console.log(`🧭 [Test Mode] Navigation initiated to: https://www.instagram.com/${firstTestProfile}/`);
+            // Mark visit time after successful navigation
+            lastProfileVisitTime = Date.now();
+          }
+          await randomDelay(2000, 3000);
+        }
+        
+        isProcessing = false;
+        return;
       }
       
       // State 1: On account page, need to click followers
@@ -970,21 +1171,43 @@
         if (onProfilePage) {
           // We're on a profile, check bio and follow
           console.log('On profile page, checking bio...');
+          // Don't mark profile visit time here - only mark it after meaningful actions
+          
           await randomDelay(2000, 3000);
           
           // Check if already following
           if (isAlreadyFollowing()) {
             console.log('Already following this user');
             
-            // Move to next follower
-            config.currentFollowerIndex++;
-            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+            // Check for break before navigation
+            await checkForBreak();
             
             // Navigate to next profile
-            if (config.currentFollowerIndex < config.currentAccountFollowers.length) {
-              const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
-              console.log(`Moving to next profile: ${nextUsername} (${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length})`);
-              safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+            if (config.currentFollowerIndex + 1 < config.currentAccountFollowers.length) {
+              const nextIndex = config.currentFollowerIndex + 1;
+              const nextUsername = config.currentAccountFollowers[nextIndex];
+              console.log(`Moving to next profile: ${nextUsername} (${nextIndex + 1}/${config.currentAccountFollowers.length})`);
+              
+              // Always wait 30 seconds before navigation
+              console.log(`⏳ Waiting 30 seconds before navigating to ${nextUsername}...`);
+              await new Promise(resolve => setTimeout(resolve, 30000));
+              console.log(`✅ 30-second wait completed, navigating to ${nextUsername}`);
+              
+              // Navigate to next profile
+              console.log(`🧭 Navigating to ${nextUsername}...`);
+              const navigateResult = safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+              console.log(`🧭 Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+              
+              // Only increment index and mark visit time after successful navigation
+              if (navigateResult) {
+                lastProfileVisitTime = Date.now(); // Mark profile visit time after successful navigation
+                config.currentFollowerIndex = nextIndex;
+                await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+              }
+            } else {
+              // No more profiles to process
+              config.currentFollowerIndex++;
+              await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
             }
             
             isProcessing = false;
@@ -998,11 +1221,19 @@
           const hasAbbreviation = checkBioForAbbreviation(bio, config.abbreviations);
             
           if (hasAbbreviation) {
+            // Check rate limiting before following
+            if (!canVisitProfile()) {
+              console.log('Rate limited, skipping follow');
+              isProcessing = false;
+              return;
+            }
+            
             // Follow the user
             const followed = findAndClickFollowButton();
             
             if (followed) {
               console.log('Followed user!');
+              lastProfileVisitTime = Date.now(); // Mark profile visit time after following
               config.totalFollows++;
               config.followsThisHour++;
               
@@ -1017,27 +1248,44 @@
             }
           }
           
-          // Move to next follower
-          config.currentFollowerIndex++;
-          await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+          // Check for break before navigation
+          await checkForBreak();
           
           // Check if we've processed all followers from this account
-          if (config.currentFollowerIndex >= config.currentAccountFollowers.length) {
+          if (config.currentFollowerIndex + 1 >= config.currentAccountFollowers.length) {
             console.log('Finished processing all followers for this account');
+            config.currentFollowerIndex++;
+            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
             await moveToNextAccount();
             return;
           }
           
           // Navigate to next profile
-          const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
-          console.log(`Moving to next profile: ${nextUsername} (${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length})`);
+          const nextIndex = config.currentFollowerIndex + 1;
+          const nextUsername = config.currentAccountFollowers[nextIndex];
+          console.log(`Moving to next profile: ${nextUsername} (${nextIndex + 1}/${config.currentAccountFollowers.length})`);
           
           await updateConfig({
-            status: `Processing follower ${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length}`,
+            status: `Processing follower ${nextIndex + 1}/${config.currentAccountFollowers.length}`,
             statusType: 'info'
           });
           
-          safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+          // Always wait 30 seconds before navigation
+          console.log(`⏳ Waiting 30 seconds before navigating to ${nextUsername}...`);
+          await new Promise(resolve => setTimeout(resolve, 30000));
+          console.log(`✅ 30-second wait completed, navigating to ${nextUsername}`);
+          
+          // Navigate to next profile
+          console.log(`🧭 Navigating to ${nextUsername}...`);
+          const navigateResult = safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+          console.log(`🧭 Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+          
+          // Only increment index and mark visit time after successful navigation
+          if (navigateResult) {
+            lastProfileVisitTime = Date.now(); // Mark profile visit time after successful navigation
+            config.currentFollowerIndex = nextIndex;
+            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+          }
           await randomDelay(2000, 3000);
           
         } else if (currentUrl.includes(`instagram.com/${currentAccount}`)) {
@@ -1050,7 +1298,18 @@
             statusType: 'info'
           });
           
-          if (!safeNavigate(`https://www.instagram.com/${firstUsername}/`)) {
+          // Wait before navigation to respect rate limiting
+          console.log(`🔍 Checking rate limit before navigating to first follower ${firstUsername}...`);
+          if (!canVisitProfile()) {
+            console.log(`❌ Rate limit active, skipping navigation to ${firstUsername}`);
+            isProcessing = false;
+            return;
+          }
+          
+          console.log(`✅ Rate limit passed, navigating to first follower ${firstUsername}`);
+          const navigateResult = safeNavigate(`https://www.instagram.com/${firstUsername}/`);
+          console.log(`🧭 Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+          if (!navigateResult) {
             return; // Navigation was blocked by anti-loop protection
           }
           await randomDelay(2000, 3000);
@@ -1064,7 +1323,18 @@
             statusType: 'info'
           });
           
-          if (!safeNavigate(`https://www.instagram.com/${firstUsername}/`)) {
+          // Wait before navigation to respect rate limiting
+          console.log(`🔍 Checking rate limit before navigating to unexpected follower ${firstUsername}...`);
+          if (!canVisitProfile()) {
+            console.log(`❌ Rate limit active, skipping navigation to ${firstUsername}`);
+            isProcessing = false;
+            return;
+          }
+          
+          console.log(`✅ Rate limit passed, navigating to unexpected follower ${firstUsername}`);
+          const navigateResult = safeNavigate(`https://www.instagram.com/${firstUsername}/`);
+          console.log(`🧭 Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+          if (!navigateResult) {
             return; // Navigation was blocked by anti-loop protection
           }
           await randomDelay(2000, 3000);
@@ -1232,8 +1502,15 @@
                                 !currentUrl.includes('/followers');
           
           if (onProfilePage) {
+            // Check rate limiting before processing profile
+            if (!canVisitProfile()) {
+              isProcessing = false;
+              return;
+            }
+            
             // We're on a follower's profile, check bio and follow
             console.log('On follower profile page, checking bio...');
+            lastProfileVisitTime = Date.now(); // Mark profile visit time
             await randomDelay(2000, 3000);
             
             // Check if already following
@@ -1247,7 +1524,21 @@
               if (config.currentFollowerIndex < config.currentAccountFollowers.length) {
                 const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
                 console.log(`Moving to next follower: ${nextUsername}`);
-                safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+                
+                // Check for break before navigation
+                await checkForBreak();
+                
+                // Wait before navigation to respect rate limiting
+                console.log(`🔍 [Following Expansion] Checking rate limit before navigating to ${nextUsername}...`);
+                if (!canVisitProfile()) {
+                  console.log(`❌ [Following Expansion] Rate limit active, skipping navigation to ${nextUsername}`);
+                  isProcessing = false;
+                  return;
+                }
+                
+                console.log(`✅ [Following Expansion] Rate limit passed, navigating to ${nextUsername}`);
+                const navigateResult = safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+                console.log(`🧭 [Following Expansion] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
               } else {
                 // Mark this following account as processed
                 config.processedFollowingAccounts.push(currentFollowingAccount);
@@ -1306,7 +1597,21 @@
             // Navigate to next profile
             const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
             console.log(`Moving to next follower profile: ${nextUsername}`);
-            safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+            
+            // Check for break before navigation
+            await checkForBreak();
+            
+            // Wait before navigation to respect rate limiting
+            console.log(`🔍 [Following Expansion] Checking rate limit before navigating to ${nextUsername}...`);
+            if (!canVisitProfile()) {
+              console.log(`❌ [Following Expansion] Rate limit active, skipping navigation to ${nextUsername}`);
+              isProcessing = false;
+              return;
+            }
+            
+            console.log(`✅ [Following Expansion] Rate limit passed, navigating to ${nextUsername}`);
+            const navigateResult = safeNavigate(`https://www.instagram.com/${nextUsername}/`);
+            console.log(`🧭 [Following Expansion] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
             await randomDelay(2000, 3000);
             
           } else {
@@ -1314,7 +1619,18 @@
             const firstUsername = config.currentAccountFollowers[config.currentFollowerIndex];
             console.log(`Navigating to follower: ${firstUsername}`);
             
-            if (!safeNavigate(`https://www.instagram.com/${firstUsername}/`)) {
+            // Wait before navigation to respect rate limiting
+            console.log(`🔍 [Following Expansion] Checking rate limit before navigating to first follower ${firstUsername}...`);
+            if (!canVisitProfile()) {
+              console.log(`❌ [Following Expansion] Rate limit active, skipping navigation to ${firstUsername}`);
+              isProcessing = false;
+              return;
+            }
+            
+            console.log(`✅ [Following Expansion] Rate limit passed, navigating to first follower ${firstUsername}`);
+            const navigateResult = safeNavigate(`https://www.instagram.com/${firstUsername}/`);
+            console.log(`🧭 [Following Expansion] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+            if (!navigateResult) {
               return;
             }
             await randomDelay(2000, 3000);
@@ -1460,11 +1776,24 @@
       return;
     }
     
-    console.log('🤖 Instagram automation initialized with TWO-PHASE workflow');
-    console.log('📋 PHASE 1 (School): Collect ALL followers → Visit each profile → Move to next account');
-    if (config.enableFollowingExpansion) {
-      console.log('📋 PHASE 2 (Following Expansion): Go to own profile → Get following list → For each following account, process their followers');
-      console.log('♻️ Phase 2 repeats continuously, refreshing following list to find new accounts');
+    // Reset rate limiting counters
+    lastProfileVisitTime = 0;
+    processedAccountsCount = 0;
+    
+    if (config.testMode) {
+      console.log('🧪 TEST MODE INITIALIZED');
+      console.log(`🧪 Test profiles: ${config.testProfiles ? config.testProfiles.join(', ') : 'None'}`);
+      console.log(`🧪 School keywords: [${config.abbreviations.join(', ')}]`);
+      console.log('⏱️ Rate limiting: 30 seconds between profile visits, 1-minute break every 5 accounts');
+      console.log('🧪 Note: Test mode uses the same school keyword matching as normal mode');
+    } else {
+      console.log('🤖 Instagram automation initialized with TWO-PHASE workflow');
+      console.log('📋 PHASE 1 (School): Collect ALL followers → Visit each profile → Move to next account');
+      console.log('⏱️ Rate limiting: 30 seconds between profile visits, 1-minute break every 5 accounts');
+      if (config.enableFollowingExpansion) {
+        console.log('📋 PHASE 2 (Following Expansion): Go to own profile → Get following list → For each following account, process their followers');
+        console.log('♻️ Phase 2 repeats continuously, refreshing following list to find new accounts');
+      }
     }
     console.log(`👤 Own profile: @${config.ownUsername}`);
     
