@@ -34,7 +34,13 @@
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["Copy of School Clicker Bot Context - Sheet1.csv"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
 
 

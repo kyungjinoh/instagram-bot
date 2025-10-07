@@ -252,7 +252,7 @@
           }
           
           if (foundDescription) {
-            console.log('🚨 TRY AGAIN LATER ERROR CONFIRMED - Initiating 12-hour break');
+            console.log('🚨 TRY AGAIN LATER ERROR CONFIRMED - Initiating 6-hour break');
             return true;
           }
         }
@@ -272,25 +272,25 @@
     return false;
   }
   
-  // Handle 12-hour break when "Try Again Later" error is detected
-  async function handle12HourBreak() {
-    const breakEndTime = Date.now() + (12 * 60 * 60 * 1000); // 12 hours from now
+  // Handle 6-hour break when "Try Again Later" error is detected
+  async function handle6HourBreak() {
+    const breakEndTime = Date.now() + (6 * 60 * 60 * 1000); // 6 hours from now
     const breakEndDate = new Date(breakEndTime);
     
-    console.log(`🚨 TRY AGAIN LATER ERROR - Starting 12-hour break`);
+    console.log(`🚨 TRY AGAIN LATER ERROR - Starting 6-hour break`);
     console.log(`⏰ Break will end at: ${breakEndDate.toLocaleString()}`);
     
     // Store break information in config
     await updateConfig({
       active: false,
-      isOn12HourBreak: true,
+      isOn6HourBreak: true,
       breakStartTime: Date.now(),
       breakEndTime: breakEndTime,
-      status: `12-hour break started due to "Try Again Later" error. Resuming at ${breakEndDate.toLocaleString()}`,
+      status: `6-hour break started due to "Try Again Later" error. Resuming at ${breakEndDate.toLocaleString()}`,
       statusType: 'warning'
     });
     
-    // Set up a one-time alarm to resume after 12 hours
+    // Set up a one-time alarm to resume after 6 hours
     chrome.runtime.sendMessage({
       action: 'setBreakAlarm',
       breakEndTime: breakEndTime
@@ -299,22 +299,22 @@
     return true;
   }
   
-  // Check if we're currently on a 12-hour break
-  function isOn12HourBreak() {
-    if (!config || !config.isOn12HourBreak) {
+  // Check if we're currently on a 6-hour break
+  function isOn6HourBreak() {
+    if (!config || !config.isOn6HourBreak) {
       return false;
     }
     
     const now = Date.now();
     if (now >= config.breakEndTime) {
       // Break is over, resume automation
-      console.log('✅ 12-hour break completed - resuming automation');
+      console.log('✅ 6-hour break completed - resuming automation');
       updateConfig({
-        isOn12HourBreak: false,
+        isOn6HourBreak: false,
         breakStartTime: null,
         breakEndTime: null,
         active: true,
-        status: '12-hour break completed - automation resumed',
+        status: '6-hour break completed - automation resumed',
         statusType: 'success'
       });
       return false;
@@ -325,7 +325,7 @@
     const remainingHours = Math.ceil(remainingTime / (60 * 60 * 1000));
     const remainingMinutes = Math.ceil((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
     
-    console.log(`⏳ Still on 12-hour break - ${remainingHours}h ${remainingMinutes}m remaining`);
+    console.log(`⏳ Still on 6-hour break - ${remainingHours}h ${remainingMinutes}m remaining`);
     return true;
   }
   
@@ -1030,8 +1030,8 @@
       return;
     }
     
-    // Check if we're on a 12-hour break
-    if (isOn12HourBreak()) {
+    // Check if we're on a 6-hour break
+    if (isOn6HourBreak()) {
       return;
     }
     
@@ -1043,7 +1043,7 @@
     
     // Check for "Try Again Later" error first (highest priority)
     if (checkForTryAgainLaterError()) {
-      await handle12HourBreak();
+      await handle6HourBreak();
       return;
     }
     
@@ -1128,9 +1128,9 @@
             }
           }
           
-          // Now trigger the 12-hour break
-          console.log(`⏰ BREAK TEST MODE: Triggering 12-hour break after following @${config.breakTestProfile}`);
-          await handle12HourBreak();
+          // Now trigger the 6-hour break
+          console.log(`⏰ BREAK TEST MODE: Triggering 6-hour break after following @${config.breakTestProfile}`);
+          await handle6HourBreak();
           
           return;
         } else {
@@ -1991,7 +1991,7 @@
       console.log('⏰ This mode will:');
       console.log('   1. Navigate to @anna_calbos profile');
       console.log('   2. Follow the profile');
-      console.log('   3. Trigger 12-hour break automatically');
+      console.log('   3. Trigger 6-hour break automatically');
       console.log('⏰ Perfect for testing the break functionality!');
     } else {
       console.log('🤖 Instagram automation initialized with TWO-PHASE workflow');
@@ -2008,9 +2008,9 @@
     setInterval(processAutomation, 8000);
   }
   
-  // Test function to manually trigger 12-hour break with custom duration (for testing purposes)
-  window.test12HourBreak = function(testDurationMinutes = 2) {
-    console.log(`🧪 TESTING: Manually triggering 12-hour break with ${testDurationMinutes} minute duration`);
+  // Test function to manually trigger 6-hour break with custom duration (for testing purposes)
+  window.test6HourBreak = function(testDurationMinutes = 2) {
+    console.log(`🧪 TESTING: Manually triggering 6-hour break with ${testDurationMinutes} minute duration`);
     
     const breakEndTime = Date.now() + (testDurationMinutes * 60 * 1000);
     const breakEndDate = new Date(breakEndTime);
@@ -2020,7 +2020,7 @@
     // Store break information in config
     updateConfig({
       active: false,
-      isOn12HourBreak: true,
+      isOn6HourBreak: true,
       breakStartTime: Date.now(),
       breakEndTime: breakEndTime,
       status: `🧪 TEST: ${testDurationMinutes}-minute break started. Resuming at ${breakEndDate.toLocaleString()}`,

@@ -1,5 +1,17 @@
-// CSV data embedded directly
-const CSV_DATA = `School Name,Instagram ID (5-6),Abbreviation (keyword that bot will detect in people's bio),Max follow per school (school population / 3)
+// CSV data will be loaded from file
+let CSV_DATA = null;
+let schools = [];
+
+// Load CSV data from file
+async function loadCSVData() {
+  try {
+    const response = await fetch(chrome.runtime.getURL('Copy of School Clicker Bot Context - Sheet1.csv'));
+    CSV_DATA = await response.text();
+    console.log('CSV data loaded successfully from file');
+  } catch (error) {
+    console.error('Error loading CSV file:', error);
+    // Fallback to embedded data
+    CSV_DATA = `School Name,Instagram ID,Abbreviation
 American Heritage Schools,"ahpbathletics, ahs_info_stuco, ahpbboyssoccer, heritagewsoc, ahsicehockey","ahs, American, Heritage",1000
 The Dalton School,"daltontigersgvb, daltoncommunityservice, daltondiyaclub, daltonxctf, daltongvt, daltonschoolnyc","dalton, ds, tds",400
 The Quarry Lane School,"qls.tbt, minds_unwind, qls_classof27, qls.pop, qls.cognicore, qlskeyclub, qlroar","qls, Quarry Lane, Quarry",420
@@ -103,8 +115,8 @@ Sierra Canyon School,,,
 Choate Rosemarry Hall,,,
 Shree Saraswathi Vidhya Mandheer,,,
 Lambert High School,,LHS,`;
-
-let schools = [];
+  }
+}
 
 // Parse CSV data
 function parseCSV() {
@@ -216,7 +228,7 @@ function updateBreakStatus(stats) {
   const breakStatusDiv = document.getElementById('breakStatus');
   if (!breakStatusDiv) return;
   
-  if (stats.isOn12HourBreak) {
+  if (stats.isOn6HourBreak) {
     const now = Date.now();
     const remainingTime = stats.breakEndTime - now;
     
@@ -227,7 +239,7 @@ function updateBreakStatus(stats) {
       
       breakStatusDiv.innerHTML = `
         <div class="break-status active">
-          <h4>🚨 12-Hour Break Active</h4>
+          <h4>🚨 6-Hour Break Active</h4>
           <p>Remaining: ${remainingHours}h ${remainingMinutes}m</p>
           <p>Resumes: ${breakEndDate.toLocaleString()}</p>
         </div>
@@ -362,7 +374,7 @@ async function startAutomation() {
     startMessage = `🧪 TEST MODE: Testing with ${testProfiles.length} specific profiles`;
     startUrl = `https://www.instagram.com/${testProfiles[0]}/`;
   } else if (breakTestMode) {
-    startMessage = `⏰ BREAK TEST MODE: Testing 12-hour break functionality with @${breakTestProfile}`;
+    startMessage = `⏰ BREAK TEST MODE: Testing 6-hour break functionality with @${breakTestProfile}`;
     startUrl = `https://www.instagram.com/${breakTestProfile}/`;
   } else if (startPhase === 'school') {
     const startAccount = school.instagramIds[validStartIndex];
@@ -447,9 +459,14 @@ function toggleAccountSelectVisibility() {
 }
 
 // Initialize
-parseCSV();
-populateSchools();
-loadState();
+async function initialize() {
+  await loadCSVData();
+  parseCSV();
+  populateSchools();
+  loadState();
+}
+
+initialize();
 
 document.getElementById('startBtn').addEventListener('click', startAutomation);
 document.getElementById('stopBtn').addEventListener('click', stopAutomation);

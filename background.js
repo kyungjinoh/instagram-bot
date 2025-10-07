@@ -75,9 +75,9 @@ async function getConfig() {
   return result.config || null;
 }
 
-// Set break alarm to resume automation after 12 hours
+// Set break alarm to resume automation after 6 hours
 function setBreakAlarm(breakEndTime) {
-  const alarmName = 'resumeAfter12HourBreak';
+  const alarmName = 'resumeAfter6HourBreak';
   
   // Clear any existing alarm
   chrome.alarms.clear(alarmName);
@@ -92,25 +92,25 @@ function setBreakAlarm(breakEndTime) {
 
 // Listen for alarm events
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'resumeAfter12HourBreak') {
-    console.log('⏰ 12-hour break alarm triggered - resuming automation');
+  if (alarm.name === 'resumeAfter6HourBreak') {
+    console.log('⏰ 6-hour break alarm triggered - resuming automation');
     
     // Get current config
     const result = await chrome.storage.local.get('config');
     const config = result.config;
     
-    if (config && config.isOn12HourBreak) {
+    if (config && config.isOn6HourBreak) {
       // Resume automation
       await updateConfig({
-        isOn12HourBreak: false,
+        isOn6HourBreak: false,
         breakStartTime: null,
         breakEndTime: null,
         active: true,
-        status: '12-hour break completed - automation resumed automatically',
+        status: '6-hour break completed - automation resumed automatically',
         statusType: 'success'
       });
       
-      console.log('✅ Automation resumed after 12-hour break');
+      console.log('✅ Automation resumed after 6-hour break');
     }
   }
 });
