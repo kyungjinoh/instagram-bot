@@ -213,6 +213,122 @@
     return false;
   }
   
+  // Check for "Try Again Later" error with specific CSS classes
+  function checkForTryAgainLaterError() {
+    // Look for the specific "Try Again Later" heading with the provided CSS classes
+    const tryAgainSelectors = [
+      'h3.x1lliihq.x1plvlek.xryxfnj.x1n2onr6.xyejjpt.x15dsfln.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.x1ms8i2q.xo1l8bm.x5n08af.x4zkp8e.xw06pyt.x10wh9bi.xpm28yp.x8viiok.x1o7cslx',
+      'h3[class*="x1lliihq"][class*="x1plvlek"][class*="xryxfnj"]',
+      'h3[dir="auto"][tabindex="-1"]'
+    ];
+    
+    for (const selector of tryAgainSelectors) {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        const text = element.textContent.trim();
+        if (text === 'Try Again Later') {
+          console.log(`🚨 TRY AGAIN LATER ERROR DETECTED: "${text}"`);
+          
+          // Also check for the description text to confirm it's the right error
+          const descriptionSelectors = [
+            'span.x1lliihq.x1plvlek.xryxfnj.x1n2onr6.xyejjpt.x15dsfln.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x1roi4f4.x1tu3fi.x3x7a5m.x10wh9bi.xpm28yp.x8viiok.x1o7cslx',
+            'span[class*="x1lliihq"][class*="x1plvlek"][class*="xryxfnj"]',
+            'span[dir="auto"]'
+          ];
+          
+          let foundDescription = false;
+          for (const descSelector of descriptionSelectors) {
+            const descElements = document.querySelectorAll(descSelector);
+            for (const descElement of descElements) {
+              const descText = descElement.textContent.trim();
+              if (descText.includes('We limit how often you can do certain things') || 
+                  descText.includes('protect our community')) {
+                foundDescription = true;
+                console.log(`✅ Confirmed description found: "${descText}"`);
+                break;
+              }
+            }
+            if (foundDescription) break;
+          }
+          
+          if (foundDescription) {
+            console.log('🚨 TRY AGAIN LATER ERROR CONFIRMED - Initiating 12-hour break');
+            return true;
+          }
+        }
+      }
+    }
+    
+    // Also check for any heading with "Try Again Later" text as fallback
+    const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, div[role="heading"]');
+    for (const heading of allHeadings) {
+      const text = heading.textContent.trim();
+      if (text === 'Try Again Later') {
+        console.log(`🚨 TRY AGAIN LATER ERROR DETECTED (fallback): "${text}"`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  // Handle 12-hour break when "Try Again Later" error is detected
+  async function handle12HourBreak() {
+    const breakEndTime = Date.now() + (12 * 60 * 60 * 1000); // 12 hours from now
+    const breakEndDate = new Date(breakEndTime);
+    
+    console.log(`🚨 TRY AGAIN LATER ERROR - Starting 12-hour break`);
+    console.log(`⏰ Break will end at: ${breakEndDate.toLocaleString()}`);
+    
+    // Store break information in config
+    await updateConfig({
+      active: false,
+      isOn12HourBreak: true,
+      breakStartTime: Date.now(),
+      breakEndTime: breakEndTime,
+      status: `12-hour break started due to "Try Again Later" error. Resuming at ${breakEndDate.toLocaleString()}`,
+      statusType: 'warning'
+    });
+    
+    // Set up a one-time alarm to resume after 12 hours
+    chrome.runtime.sendMessage({
+      action: 'setBreakAlarm',
+      breakEndTime: breakEndTime
+    });
+    
+    return true;
+  }
+  
+  // Check if we're currently on a 12-hour break
+  function isOn12HourBreak() {
+    if (!config || !config.isOn12HourBreak) {
+      return false;
+    }
+    
+    const now = Date.now();
+    if (now >= config.breakEndTime) {
+      // Break is over, resume automation
+      console.log('✅ 12-hour break completed - resuming automation');
+      updateConfig({
+        isOn12HourBreak: false,
+        breakStartTime: null,
+        breakEndTime: null,
+        active: true,
+        status: '12-hour break completed - automation resumed',
+        statusType: 'success'
+      });
+      return false;
+    }
+    
+    // Still on break
+    const remainingTime = config.breakEndTime - now;
+    const remainingHours = Math.ceil(remainingTime / (60 * 60 * 1000));
+    const remainingMinutes = Math.ceil((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+    
+    console.log(`⏳ Still on 12-hour break - ${remainingHours}h ${remainingMinutes}m remaining`);
+    return true;
+  }
+  
   // Find followers link/button
   function findFollowersButton() {
     // Look for "followers" text in various elements
@@ -909,12 +1025,29 @@
   async function processAutomation() {
     console.log(`🔍 processAutomation called - isProcessing: ${isProcessing}, config.active: ${config?.active}, isScrollingFollowers: ${isScrollingFollowers}`);
     
-    if (isProcessing || !config || !config.active || isScrollingFollowers) {
+    if (isProcessing || !config || isScrollingFollowers) {
       console.log(`⏭️ Skipping automation - isProcessing: ${isProcessing}, config.active: ${config?.active}, isScrollingFollowers: ${isScrollingFollowers}`);
       return;
     }
     
-    // Check for daily limit popup first
+    // Check if we're on a 12-hour break
+    if (isOn12HourBreak()) {
+      return;
+    }
+    
+    // Check if automation is active (after break check)
+    if (!config.active) {
+      console.log(`⏭️ Automation not active`);
+      return;
+    }
+    
+    // Check for "Try Again Later" error first (highest priority)
+    if (checkForTryAgainLaterError()) {
+      await handle12HourBreak();
+      return;
+    }
+    
+    // Check for daily limit popup
     if (checkAndCloseDailyLimitPopup()) {
       // If daily limit popup was detected and closed, wait a bit before continuing
       await randomDelay(2000, 3000);
@@ -953,6 +1086,72 @@
         config.currentAccountFollowers = [];
         config.followersCollected = false;
         config.currentFollowerIndex = 0;
+      }
+      
+      // Break Test Mode: Follow anna_calbos then trigger 12-hour break
+      if (config.breakTestMode) {
+        console.log('⏰ BREAK TEST MODE: Testing 12-hour break functionality');
+        console.log(`⏰ Current URL: ${currentUrl}`);
+        console.log(`⏰ Break test profile: ${config.breakTestProfile}`);
+        
+        // Check if we're on the break test profile page
+        const onBreakTestProfilePage = currentUrl.includes(`instagram.com/${config.breakTestProfile}`);
+        
+        if (onBreakTestProfilePage) {
+          console.log(`⏰ BREAK TEST MODE: On @${config.breakTestProfile} profile page`);
+          
+          await randomDelay(2000, 3000);
+          
+          // Check if already following
+          if (isAlreadyFollowing()) {
+            console.log(`⏰ BREAK TEST MODE: Already following @${config.breakTestProfile}`);
+          } else {
+            // Follow the user
+            console.log(`⏰ BREAK TEST MODE: Attempting to follow @${config.breakTestProfile}`);
+            const followed = findAndClickFollowButton();
+            
+            if (followed) {
+              console.log(`⏰ BREAK TEST MODE: Successfully followed @${config.breakTestProfile}`);
+              config.totalFollows++;
+              config.followsThisHour++;
+              
+              await updateConfig({
+                totalFollows: config.totalFollows,
+                followsThisHour: config.followsThisHour,
+                status: `⏰ BREAK TEST MODE: Followed @${config.breakTestProfile}, triggering 12-hour break`,
+                statusType: 'warning'
+              });
+              
+              await randomDelay(3000, 5000);
+            } else {
+              console.log(`⏰ BREAK TEST MODE: Could not find follow button for @${config.breakTestProfile}`);
+            }
+          }
+          
+          // Now trigger the 12-hour break
+          console.log(`⏰ BREAK TEST MODE: Triggering 12-hour break after following @${config.breakTestProfile}`);
+          await handle12HourBreak();
+          
+          return;
+        } else {
+          // Navigate to the break test profile
+          console.log(`⏰ BREAK TEST MODE: Navigating to @${config.breakTestProfile}`);
+          
+          const navigateResult = safeNavigate(`https://www.instagram.com/${config.breakTestProfile}/`);
+          console.log(`⏰ BREAK TEST MODE: Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
+          
+          if (navigateResult) {
+            await updateConfig({
+              status: `⏰ BREAK TEST MODE: Navigating to @${config.breakTestProfile}`,
+              statusType: 'info'
+            });
+          }
+          
+          await randomDelay(2000, 3000);
+        }
+        
+        isProcessing = false;
+        return;
       }
       
       // Test Mode: Process specific test profiles
@@ -1786,6 +1985,14 @@
       console.log(`🧪 School keywords: [${config.abbreviations.join(', ')}]`);
       console.log('⏱️ Rate limiting: 30 seconds between profile visits, 1-minute break every 5 accounts');
       console.log('🧪 Note: Test mode uses the same school keyword matching as normal mode');
+    } else if (config.breakTestMode) {
+      console.log('⏰ BREAK TEST MODE INITIALIZED');
+      console.log(`⏰ Break test profile: @${config.breakTestProfile}`);
+      console.log('⏰ This mode will:');
+      console.log('   1. Navigate to @anna_calbos profile');
+      console.log('   2. Follow the profile');
+      console.log('   3. Trigger 12-hour break automatically');
+      console.log('⏰ Perfect for testing the break functionality!');
     } else {
       console.log('🤖 Instagram automation initialized with TWO-PHASE workflow');
       console.log('📋 PHASE 1 (School): Collect ALL followers → Visit each profile → Move to next account');
@@ -1800,6 +2007,80 @@
     // Start processing loop
     setInterval(processAutomation, 8000);
   }
+  
+  // Test function to manually trigger 12-hour break with custom duration (for testing purposes)
+  window.test12HourBreak = function(testDurationMinutes = 2) {
+    console.log(`🧪 TESTING: Manually triggering 12-hour break with ${testDurationMinutes} minute duration`);
+    
+    const breakEndTime = Date.now() + (testDurationMinutes * 60 * 1000);
+    const breakEndDate = new Date(breakEndTime);
+    
+    console.log(`⏰ Test break will end at: ${breakEndDate.toLocaleString()}`);
+    
+    // Store break information in config
+    updateConfig({
+      active: false,
+      isOn12HourBreak: true,
+      breakStartTime: Date.now(),
+      breakEndTime: breakEndTime,
+      status: `🧪 TEST: ${testDurationMinutes}-minute break started. Resuming at ${breakEndDate.toLocaleString()}`,
+      statusType: 'warning'
+    });
+    
+    // Set up a one-time alarm to resume after test duration
+    chrome.runtime.sendMessage({
+      action: 'setBreakAlarm',
+      breakEndTime: breakEndTime
+    });
+    
+    console.log(`✅ Test break initiated - will resume in ${testDurationMinutes} minutes`);
+    return true;
+  };
+  
+  // Test function to simulate "Try Again Later" error (for testing purposes)
+  window.testTryAgainLaterError = function() {
+    console.log('🧪 TESTING: Simulating "Try Again Later" error detection');
+    
+    // Create a mock error element with the exact CSS classes
+    const mockError = document.createElement('h3');
+    mockError.className = 'x1lliihq x1plvlek xryxfnj x1n2onr6 xyejjpt x15dsfln x193iq5w xeuugli x1fj9vlw x13faqbe x1vvkbs x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1i0vuye x1ms8i2q xo1l8bm x5n08af x4zkp8e xw06pyt x10wh9bi xpm28yp x8viiok x1o7cslx';
+    mockError.setAttribute('dir', 'auto');
+    mockError.setAttribute('tabindex', '-1');
+    mockError.textContent = 'Try Again Later';
+    
+    const mockDescription = document.createElement('span');
+    mockDescription.className = 'x1lliihq x1plvlek xryxfnj x1n2onr6 xyejjpt x15dsfln x193iq5w xeuugli x1fj9vlw x13faqbe x1vvkbs x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1i0vuye xvs91rp xo1l8bm x1roi4f4 x1tu3fi x3x7a5m x10wh9bi xpm28yp x8viiok x1o7cslx';
+    mockDescription.setAttribute('dir', 'auto');
+    mockDescription.textContent = 'We limit how often you can do certain things on Instagram, like following people, to protect our community. Let us know if you think we made a mistake.';
+    
+    // Add to page temporarily
+    const container = document.createElement('div');
+    container.appendChild(mockError);
+    container.appendChild(mockDescription);
+    container.style.position = 'fixed';
+    container.style.top = '10px';
+    container.style.left = '10px';
+    container.style.zIndex = '9999';
+    container.style.background = 'white';
+    container.style.padding = '10px';
+    container.style.border = '2px solid red';
+    document.body.appendChild(container);
+    
+    console.log('🧪 Mock error elements added to page');
+    console.log('🧪 Testing error detection...');
+    
+    // Test the detection function
+    const detected = checkForTryAgainLaterError();
+    console.log(`🧪 Error detection result: ${detected ? 'DETECTED' : 'NOT DETECTED'}`);
+    
+    // Clean up after 5 seconds
+    setTimeout(() => {
+      document.body.removeChild(container);
+      console.log('🧪 Test cleanup completed');
+    }, 5000);
+    
+    return detected;
+  };
   
   // Wait for page to load
   if (document.readyState === 'loading') {

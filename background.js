@@ -12,6 +12,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === 'getConfig') {
     getConfig().then(config => sendResponse({ config }));
     return true;
+  } else if (message.action === 'setBreakAlarm') {
+    setBreakAlarm(message.breakEndTime);
   }
 });
 
@@ -72,6 +74,46 @@ async function getConfig() {
   const result = await chrome.storage.local.get('config');
   return result.config || null;
 }
+
+// Set break alarm to resume automation after 12 hours
+function setBreakAlarm(breakEndTime) {
+  const alarmName = 'resumeAfter12HourBreak';
+  
+  // Clear any existing alarm
+  chrome.alarms.clear(alarmName);
+  
+  // Set new alarm for the break end time
+  chrome.alarms.create(alarmName, {
+    when: breakEndTime
+  });
+  
+  console.log(`⏰ Break alarm set for: ${new Date(breakEndTime).toLocaleString()}`);
+}
+
+// Listen for alarm events
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'resumeAfter12HourBreak') {
+    console.log('⏰ 12-hour break alarm triggered - resuming automation');
+    
+    // Get current config
+    const result = await chrome.storage.local.get('config');
+    const config = result.config;
+    
+    if (config && config.isOn12HourBreak) {
+      // Resume automation
+      await updateConfig({
+        isOn12HourBreak: false,
+        breakStartTime: null,
+        breakEndTime: null,
+        active: true,
+        status: '12-hour break completed - automation resumed automatically',
+        statusType: 'success'
+      });
+      
+      console.log('✅ Automation resumed after 12-hour break');
+    }
+  }
+});
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(() => {

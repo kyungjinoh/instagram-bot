@@ -1,108 +1,108 @@
 // CSV data embedded directly
-const CSV_DATA = `School Name,Instagram ID (5-6),Abbreviation (keyword that bot will detect in people's bio)
-American Heritage Schools,"ahpbathletics, ahs_info_stuco, ahpbboyssoccer, heritagewsoc, ahsicehockey","ahs, American, Heritage"
-The Dalton School,"daltontigersgvb, daltoncommunityservice, daltondiyaclub, daltonxctf, daltongvt, daltonschoolnyc","dalton, ds, tds"
-The Quarry Lane School,"qls.tbt, minds_unwind, qls_classof27, qls.pop, qls.cognicore, qlskeyclub, qlroar","qls, Quarry Lane, Quarry"
-Ethical Culture Fieldston School,"csabfieldston, fieldstonvarsitytheater, thefieldstonnews, ecfs1878","ecfs, fieldston"
-Blair Academy,"blair_varsity_baseball, blairaquatics, blairacademyskiteam, blairtfxc, blair_academy","blair, BA"
-The Village School,"viking_seniors26, vhsboys_soccer, vhs.ndsa, ladyvikings_vb_, tennis.vhs, villagevikings","vhs, vilage, viking"
-Ransom Everglades School,"re_softball, re_boys_volleyball, re_student_philanthropy, ransomevergladesscuba, re_poetry_, ransomevergladesathletics","RE, Ransom Everglades, Ransom, Everglades, RES"
-Milton Academy,"maboyssoccer, mabvsquash, majvbsoccer, ma_skiteam, maclass2026, miltonacademysailing, magirlssoccerr, miltonacademy","MA, milton"
-The Awty International School,"awtyvarsitytennis, reesegk09, awtygirlslacrosse, awtyjvfh, ayahpapayito, awtyintlschool","ais, awty, "
-Georgetown Day School,"gdswsoccer, gdsvbaseball, gdsmens.tennis, gds_menslax, gds_wrestling, gdswvbball, gdshoppers","Georgetown, gds"
-Maspeth HS,"mhsboysvarssoccer, maspethhsboysvarstrack, maspeth_hs_rugby, maspethhsathletics, maspethhs.badminton, maspethhoops","mhs, maspeth"
-St. Joseph by the Sea HS,"stjosephbythesea, seavikingsbball, seavolleyball, stjseafootball, st.joseph_girlsflagfootball, seavikingsbaseball","st joseph by the sea, sea, sjs"
-Staten Island Technical HS,"sitechso, sitechstudentlife, sithsmercury, msitsoccer, _sammytheseagull, sithskeyclub","siths, sith, sit"
-Susan E. Wagner HS,"wagnerjrotc, sewfalconsjournalism, susanwagnerband, wagnerdance, sewfalcons, wagnerhscheerleading","sewhs, whs, susan wagner, wagner"
-Archbishop Molloy HS,"molloyhs_varsitybaseball, molloyhs_varsitysoftball_, molloyhs_admissions, molloyhs, molloyhs_athletics","molloyhs, molloy, amhs"
-Benjamin N. Cardozo HS,"benjamincardozohs, cardozocheer_stunt, cardozomocktrial, dozo.fbla, cardozo.wrestling, dozojudgettes","dozo, bnchs, cardozo"
-Forest Hills HS,"fhhsscioly, fhhskeyclub, foresthillstrackandfield, fhhs.athletics, fhhssoccerofficial, fhhsstudentgov","fhhs, forest hills"
-Francis Lewis HS,"foresthillshs_nyc, flhsmathoffice, francis.lewis.hoops, flhs_robotics, flhspatriots, lewisculinary","flhs, lewis"
-Richmond Hill HS,"athletics_rhhs, rhhsfootball, richmondhillhs, rhhschorus, rhhs.baseball, rhhs_cheerleaders","rhhs, richmond hill hs, richmond hill"
-St. Francis Preparatory School,"stfrancisprep, stfrancisprepathletics, stfrancisprepmusic, sfpfootball, sfpdanceteam, stfrancisprepmensbasketball","sfp, st. francis prep"
-Townsend Harris HS,"townsend_harris_hs, thhssu, harrislam_, thhsperiod, thhskc","thhs, townsend"
-Vanguard HS,stuyvesanths_nyc,
-Stuyvesant HS,,
-Brooklyn Technical HS,,
-Edward R. Murrow HS,,
-Fort Hamilton HS,"forthamiltonbk, fhhstigerbaseball, fthhsalumni, fhhscheerbk, fhhsflagteam, fort2enior5, fthhspta","FHHS, fhhs, fthhs, FTHHS, Fort Hamilton, Fort Hamilton HS"
-James Madison HS,,
-Leon M. Goldstein HS,,
-Midwood HS,"midwoodhsunicef. midwooddebateteam, mhsasianfest, midwoodphsclub, midwoodaerspace","Midwood, midwood, mhs, MHS"
-Poly Prep Country Day School,,
-Saint Ann's School,"sasvarsitysoccer, saint_annas_computer_center, sasblackstudentunion, sasboysjvsoccer","Saint Ann's , sas, SAS, saint ann's"
-Xaverian HS,"xaverian_volleyball, xaverianvarsitytennis, xhsgsoccer, xaverianhsbaseball, xaverianxctf, xaveriangirlsvaristyswim","xhs, xaverian"
-Harry S Truman HS,,
-La Cañada HS,,
-Troy HS,"troyhighasb, troywarriors, troyhsfbla, troywarriorsathletics, troynjrotc, troyhighmusicprogram","ths, troy"
-Orange County School of the Arts (OCSA),"weareocsa, ocsaballroom, ocsapopularmusic, ocsacmd, ocsa_cah, ocsamt","ocsa, orange county school of the arts"
-Redondo Union HS,,
-South Pasadena Senior HS,,
-Irvine HS,,
-Portola HS,,
-Diamond Bar HS,"dbhstheater, dbhsorg, fbla.dbhs, dbhs_events, diamondbarusb, dbhsmusic","dbhs, db"
-Cerritos HS,,
-La Quinta HS,,
-Northwood HS,,
-Sunny Hills HS,,
-Glen A. Wilson HS,,
-Woodbridge HS,,
-Arnold O. Beckman HS,,
-Fountain Valley HS,,
-Santa Monica HS,,
-El Segundo HS,,
-West Ranch HS,,
-Walnut HS,"walnuthigh_asb, walnut_mustangs, whsbluethunderband, whs.mustangathletics, walnutfbla, walnutfootball","whs, walnut"
-Crescenta Valley HS,,
-Mark Keppel HS,,
-Valencia HS,,
-Gabrielino HS,,
-Mira Costa HS,,
-Monta Vista HS,,
-Walter Payton College Preparatory HS,,
-Northside College Preparatory HS,,
-Whitney M. Young Magnet HS,,
-Jones College Prep HS,,
-Adlai E Stevenson HS,,
-Hinsdale Central HS,,
-Vernon Hills HS,,
-Neuqua Valley HS,,
-New Trier Township HS,newtrierhs_santa,"NT, NTHS"
-William Fremd HS,fremdhs_santa,"wfhs, "
-John Hersey HS,,
-Lake Forest HS,,
-Deerfield HS,,
-Glenbrook North HS,,
-Libertyville HS,,
-Naperville Central HS,,
-Barrington HS,,
-Maine South HS,,
-Munster HS,,
-Prospect HS,,
-Naperville North HS,,
-Glenbard West HS,,
-Highland Park HS,,
-Metea Valley HS,,
-Oak Park and River Forest HS,,
-Phillips Academy Andover,,
-Phillips Exeter Academy,"phillipsexeter, phillipsexeterdance, phillipsacademy, exetergirlslacrosse, exeterfieldhockey, pea_lib","pea, Philips Exeter, PEA"
-Harvard-Westlake School,"hwgirslwaterpolo, hw_surfclub, hwfanatics, hwfieldhockey, hwspirit, hwbaseball","Harvard-Westlake , harward-westlake, HW, hw"
-The Pingry School,"pg_waterpolo, __pg.xc__, pingry_summer, pingry_outing_club, pingryschoolhonorboard, pingryjournalclub","Pingry, pingry, tps"
-St. John's School,,
-Rye Country Day School,"ryecountryday, ryecountrydayschool, rcdsfilmclub, rcdsprom2025, rye_country_day_mun, rcdsathletics","RCDS, rcds, Rye Country Day School, Rye Country"
-Horace Mann School,"horace_mann_trojans, hmalumni, hmcstigers6, horacemannschoolnyc, horacemanncoco, horacemannlions","Horace Mann, horace mann, hm, HM"
-Trinity School,"trinityschoolnyc, voice_of_trinity, trinityschoolcollegeoffice","trinity, Trinity, nyc, ts"
-Sidwell Friends School,"sidwellfriends, sidwell_tf, sidwellsummer, sidwellfriendslibrary, sfsquackers","Sidwell, Sfs, sidwell"
-The John Cooper School,"cooper_dupuis21, thejohncooperschoolclumni, jcdragonxc, jcs_boysbball, cooper_varsity_boys_soccer, jcs.finearts, andres_valenzuelav","jcs, JCS, Jcs, cooper"
-Berkeley Preparatory School,"bpsredcrossclub, berkxctf, bps_rowing, alessandraverfailie, bps_varcity_soccer, berkelyprepalumni, bpsspiritualife","Bps, bps, BPS, berkeley"
-The Hockaday School,"annabellagriggs, hockadayhypewomen, thehockadayschool, hockadayathletics, hockascience, hockadaysocialimpact","hday, Hockaday, ths"
-Bellarmine College Prep,"bcplacrosse, bcp.polevault, bellarmine_ccc, bcprugby, bcp.redcrossclub, thebellarminebellarman","BPS, bps, bellarmine"
-Lynbrook HS,,
-Lowell HS,"lowell_bsu, lowelltech, lhsfilam, lowellhsbsu, thelowell, lowellhistoryclub, lhslatinclub","lhs, LHS, Lowell"
-Sierra Canyon School,,
-Choate Rosemarry Hall,,
-Shree Saraswathi Vidhya Mandheer,,
-Lambert High School,,LHS`;
+const CSV_DATA = `School Name,Instagram ID (5-6),Abbreviation (keyword that bot will detect in people's bio),Max follow per school (school population / 3)
+American Heritage Schools,"ahpbathletics, ahs_info_stuco, ahpbboyssoccer, heritagewsoc, ahsicehockey","ahs, American, Heritage",1000
+The Dalton School,"daltontigersgvb, daltoncommunityservice, daltondiyaclub, daltonxctf, daltongvt, daltonschoolnyc","dalton, ds, tds",400
+The Quarry Lane School,"qls.tbt, minds_unwind, qls_classof27, qls.pop, qls.cognicore, qlskeyclub, qlroar","qls, Quarry Lane, Quarry",420
+Ethical Culture Fieldston School,"csabfieldston, fieldstonvarsitytheater, thefieldstonnews, ecfs1878","ecfs, fieldston",500
+Blair Academy,"blair_varsity_baseball, blairaquatics, blairacademyskiteam, blairtfxc, blair_academy","blair, BA",141
+The Village School,"viking_seniors26, vhsboys_soccer, vhs.ndsa, ladyvikings_vb_, tennis.vhs, villagevikings","vhs, vilage, viking",500
+Ransom Everglades School,"re_softball, re_boys_volleyball, re_student_philanthropy, ransomevergladesscuba, re_poetry_, ransomevergladesathletics","RE, Ransom Everglades, Ransom, Everglades, RES",340
+Milton Academy,"maboyssoccer, mabvsquash, majvbsoccer, ma_skiteam, maclass2026, miltonacademysailing, magirlssoccerr, miltonacademy","MA, milton",200
+The Awty International School,"awtyvarsitytennis, reesegk09, awtygirlslacrosse, awtyjvfh, ayahpapayito, awtyintlschool","ais, awty, ",500
+Georgetown Day School,"gdswsoccer, gdsvbaseball, gdsmens.tennis, gds_menslax, gds_wrestling, gdswvbball, gdshoppers","Georgetown, gds",300
+Maspeth HS,"mhsboysvarssoccer, maspethhsboysvarstrack, maspeth_hs_rugby, maspethhsathletics, maspethhs.badminton, maspethhoops","mhs, maspeth",341
+St. Joseph by the Sea HS,"stjosephbythesea, seavikingsbball, seavolleyball, stjseafootball, st.joseph_girlsflagfootball, seavikingsbaseball","st joseph by the sea, sea, sjs",325
+Staten Island Technical HS,"sitechso, sitechstudentlife, sithsmercury, msitsoccer, _sammytheseagull, sithskeyclub","siths, sith, sit",468
+Susan E. Wagner HS,"wagnerjrotc, sewfalconsjournalism, susanwagnerband, wagnerdance, sewfalcons, wagnerhscheerleading","sewhs, whs, susan wagner, wagner",1000
+Archbishop Molloy HS,"molloyhs_varsitybaseball, molloyhs_varsitysoftball_, molloyhs_admissions, molloyhs, molloyhs_athletics","molloyhs, molloy, amhs",502
+Benjamin N. Cardozo HS,"benjamincardozohs, cardozocheer_stunt, cardozomocktrial, dozo.fbla, cardozo.wrestling, dozojudgettes","dozo, bnchs, cardozo",991
+Forest Hills HS,"fhhsscioly, fhhskeyclub, foresthillstrackandfield, fhhs.athletics, fhhssoccerofficial, fhhsstudentgov","fhhs, forest",1142
+Francis Lewis HS,"foresthillshs_nyc, flhsmathoffice, francis.lewis.hoops, flhs_robotics, flhspatriots, lewisculinary","flhs, lewis",1469
+Richmond Hill HS,"athletics_rhhs, rhhsfootball, richmondhillhs, rhhschorus, rhhs.baseball, rhhs_cheerleaders","rhhs, richmond hill hs, richmond",566
+St. Francis Preparatory School,"stfrancisprep, stfrancisprepathletics, stfrancisprepmusic, sfpfootball, sfpdanceteam, stfrancisprepmensbasketball","sfp, st. francis prep",807
+Townsend Harris HS,"townsend_harris_hs, thhssu, harrislam_, thhsperiod, thhskc","thhs, townsend",444
+Vanguard HS,"vanguardhsnyc, vanguardhspta, jrecpanthersvball, jrecbvb, jrecpantherscheer, jrecpanthersathletics","vhs, vanguard",135
+Stuyvesant HS,"stuyvesanthighschool, stuyvesanths_nyc, stuysu, stuyfootball, stuyspectator, stuyjuniorcaucus","stuy, stuyvesant",1086
+Brooklyn Technical HS,"brooklyntech_hs, thetechkey, bthssgo, bktechwrestling, bthsnhs, brooklyntechlibrary","bths, brooklyn tech",1936
+Edward R. Murrow HS,"edwardrmurrowhs, murrowboys_basketball, murrowart, murrowtheater, themurrownetwork, murrow.music.official_","ermhs, murrow",1198
+Fort Hamilton HS,"forthamiltonbk, fhhstigerbaseball, fthhsalumni, fhhscheerbk, fhhsflagteam, fort2enior5, fthhspta","FHHS, fhhs, fthhs, FTHHS, Fort Hamilton, Fort Hamilton HS",1600
+James Madison HS,"jmhsbklyn, jmhsmbb, studentgov_jmhs, athletics_jmhs, jmhs_mentors, jmhs.badminton","jmhs, mhs, james mdhs",1255
+Leon M. Goldstein HS,"lmghs, goldsteinkeyclub, lmghss.2027, lmghs2026, lmghs.2028, lmghs_nhs","lmghs, lmg",333
+Midwood HS,"midwoodhsunicef. midwooddebateteam, mhsasianfest, midwoodphsclub, midwoodaerspace","Midwood, midwood, mhs, MHS",1302
+Poly Prep Country Day School,"polyprep, polypreparts, polybluedevils, polyprepbase, polystudentgovernment, themorningdevil","poly prep, poly",383
+Saint Ann's School,"sasvarsitysoccer, saint_annas_computer_center, sasblackstudentunion, sasboysjvsoccer","Saint Ann's , sas, SAS, saint ann's, saint anns",548
+Xaverian HS,"xaverian_volleyball, xaverianvarsitytennis, xhsgsoccer, xaverianhsbaseball, xaverianxctf, xaveriangirlsvaristyswim","xhs, xaverian",550
+Harry S Truman HS,"truman.hs, trumanhsbxathletics, trumanbaseballnyc, truman_hs_bb, trumanmustangwrestling, trumanbasketball","hst, hsths",552
+La Cañada HS,"lacanadahighschool, lchscollegeandcareer, la_canada_marching_band, lacanadaathletics, thespartannews, lchsasb","lchs, lc",
+Troy HS,"troyhighasb, troywarriors, troyhsfbla, troywarriorsathletics, troynjrotc, troyhighmusicprogram","ths, troy",
+Orange County School of the Arts (OCSA),"weareocsa, ocsaballroom, ocsapopularmusic, ocsacmd, ocsa_cah, ocsamt","ocsa, orange county school of the arts",751
+Redondo Union HS,"sammyseahawk, redondoathletics, ruhs_asb, ruhsfootball, ruhshoops, ruhscheer",ruhs,991
+South Pasadena Senior HS,,,
+Irvine HS,,,
+Portola HS,,,
+Diamond Bar HS,"dbhstheater, dbhsorg, fbla.dbhs, dbhs_events, diamondbarusb, dbhsmusic","dbhs, db",844
+Cerritos HS,"cerritosmao, cerritos_lowbrass, cerritosmsu, cerritostennis, cerritohs_athletics, cerritohs.bec ","chs, CHS, Cerritos, cerritos",694
+La Quinta HS,,,770
+Northwood HS,"northwoodhs, northwood.msa, nhs.marching, northwoodhsgolf, nhs_collegencareer, northwoodswimanddive","NHS, nhs, Northwood, northwood",
+Sunny Hills HS,"sunnyhillstfxc, sunnyhillsathletics, sunnyhillscolorguard, sunnyhillspercussion, shhs_epic_engineering","shhs, SHHS, Sunny Hills, sunny hills",
+Glen A. Wilson HS,,,
+Woodbridge HS,"woodbridge_hs, woodbridge_ptsa, woodbridge_warriors, woodbridge_ice_hockey, whstrack_, warriors_whs","whs, WHS, woodbridge, Woodbridge",650
+Arnold O. Beckman HS,,,
+Fountain Valley HS,"fvhs_athletics, fvhsfca, fvhssurf, fvhs.crosscountry, fountainvalleycolorguard","fvhs, FVHS, Fountain Valley, fountain valley",1043
+Santa Monica HS,"samohi.surfteam, samoclass27, samoclass26","samo, Samo, Santa Monica, santa monica, samohi, smhs, Smhs",857
+El Segundo HS,,,
+West Ranch HS,,,
+Walnut HS,"walnuthigh_asb, walnut_mustangs, whsbluethunderband, whs.mustangathletics, walnutfbla, walnutfootball","whs, walnut",713
+Crescenta Valley HS,,,
+Mark Keppel HS,,,
+Valencia HS,,,
+Gabrielino HS,"gabrielino_peer_helping, gabrielinobaseball, gab_hs_music, gabrielino_baseball, gemr_brass, ghs.crochet.club","ghs, Ghs, ",494
+Mira Costa HS,"mchsdramatechdepartment, mchs.girlsgolf, mchsbands, miracosta_girlsflag, costaboyswp","mchs, Mchs, MCHS",830
+Monta Vista HS,"montavistawaterpolo, mvhstunt, montavistaptca, mvhs28, mvphyseng","mvhs, MVHS, Mvhs",
+Walter Payton College Preparatory HS,,,
+Northside College Preparatory HS,,,
+Whitney M. Young Magnet HS,,,
+Jones College Prep HS,,,
+Adlai E Stevenson HS,,,
+Hinsdale Central HS,,,
+Vernon Hills HS,,,
+Neuqua Valley HS,,,
+New Trier Township HS,newtrierhs_santa,"NT, NTHS",
+William Fremd HS,fremdhs_santa,"wfhs, ",
+John Hersey HS,,,
+Lake Forest HS,,,
+Deerfield HS,,,
+Glenbrook North HS,,,
+Libertyville HS,,,
+Naperville Central HS,,,
+Barrington HS,,,
+Maine South HS,,,
+Munster HS,,,
+Prospect HS,,,
+Naperville North HS,,,
+Glenbard West HS,,,
+Highland Park HS,,,
+Metea Valley HS,,,
+Oak Park and River Forest HS,,,
+Phillips Academy Andover,,,
+Phillips Exeter Academy,"phillipsexeter, phillipsexeterdance, phillipsacademy, exetergirlslacrosse, exeterfieldhockey, pea_lib","pea, Exeter, PEA",368
+Harvard-Westlake School,"hwgirslwaterpolo, hw_surfclub, hwfanatics, hwfieldhockey, hwspirit, hwbaseball","Harvard-Westlake , harvard-westlake, HW, hw, westlake",540
+The Pingry School,"pg_waterpolo, __pg.xc__, pingry_summer, pingry_outing_club, pingryschoolhonorboard, pingryjournalclub","Pingry, pingry, tps",400
+St. John's School,,,
+Rye Country Day School,"ryecountryday, ryecountrydayschool, rcdsfilmclub, rcdsprom2025, rye_country_day_mun, rcdsathletics","RCDS, rcds, Rye Country Day School, Rye Country",300
+Horace Mann School,"horace_mann_trojans, hmalumni, hmcstigers6, horacemannschoolnyc, horacemanncoco, horacemannlions","Horace Mann, horace mann, hm, HM",592
+Trinity School,"trinityschoolnyc, voice_of_trinity, trinityschoolcollegeoffice","trinity, Trinity, nyc, ts",333
+Sidwell Friends School,"sidwellfriends, sidwell_tf, sidwellsummer, sidwellfriendslibrary, sfsquackers","Sidwell, Sfs, sidwell",380
+The John Cooper School,"cooper_dupuis21, thejohncooperschoolclumni, jcdragonxc, jcs_boysbball, cooper_varsity_boys_soccer, jcs.finearts, andres_valenzuelav","jcs, JCS, Jcs, cooper",459
+Berkeley Preparatory School,"bpsredcrossclub, berkxctf, bps_rowing, alessandraverfailie, bps_varcity_soccer, berkelyprepalumni, bpsspiritualife","Bps, bps, BPS, berkeley",476
+The Hockaday School,"annabellagriggs, hockadayhypewomen, thehockadayschool, hockadayathletics, hockascience, hockadaysocialimpact","hday, Hockaday, ths",363
+Bellarmine College Prep,"bcplacrosse, bcp.polevault, bellarmine_ccc, bcprugby, bcp.redcrossclub, thebellarminebellarman","BPS, bps, bellarmine",555
+Lynbrook HS,,,
+Lowell HS,"lowell_bsu, lowelltech, lhsfilam, lowellhsbsu, thelowell, lowellhistoryclub, lhslatinclub","lhs, LHS, Lowell",846
+Sierra Canyon School,,,
+Choate Rosemarry Hall,,,
+Shree Saraswathi Vidhya Mandheer,,,
+Lambert High School,,LHS,`;
 
 let schools = [];
 
@@ -124,6 +124,7 @@ function parseCSV() {
     const schoolName = fields[0] ? fields[0].trim() : '';
     const instagramIdsString = fields[1] ? fields[1].trim() : '';
     const abbreviationsString = fields[2] ? fields[2].trim() : '';
+    const maxFollowString = fields[3] ? fields[3].trim() : '';
     
     // Parse Instagram IDs - handle empty or missing values
     const instagramIds = instagramIdsString ? 
@@ -135,6 +136,10 @@ function parseCSV() {
       abbreviationsString.split(',').map(abbr => abbr.trim()).filter(abbr => abbr) : 
       [];
     
+    // Parse max follow count
+    const maxFollow = maxFollowString && !isNaN(parseInt(maxFollowString)) ? 
+      parseInt(maxFollowString) : null;
+    
     // Skip schools with no data
     if (!schoolName && instagramIds.length === 0 && abbreviations.length === 0) {
       return null;
@@ -144,7 +149,8 @@ function parseCSV() {
       id: index,
       name: schoolName,
       instagramIds: instagramIds,
-      abbreviations: abbreviations
+      abbreviations: abbreviations,
+      maxFollow: maxFollow
     };
   }).filter(school => school !== null); // Remove null entries
 }
@@ -155,7 +161,8 @@ function populateSchools() {
   schools.forEach(school => {
     const option = document.createElement('option');
     option.value = school.id;
-    option.textContent = `${school.name} (${school.instagramIds.length} accounts)`;
+    const maxFollowText = school.maxFollow ? ` - Max: ${school.maxFollow}` : '';
+    option.textContent = `${school.name} (${school.instagramIds.length} accounts${maxFollowText})`;
     select.appendChild(option);
   });
 }
@@ -199,6 +206,40 @@ function updateStats(stats) {
     `${stats.currentAccountIndex + 1}/${stats.totalAccounts}`;
   document.getElementById('statHourly').textContent = `${stats.followsThisHour}/5`;
   document.getElementById('statTotal').textContent = stats.totalFollows;
+  
+  // Update break status display
+  updateBreakStatus(stats);
+}
+
+// Update break status display
+function updateBreakStatus(stats) {
+  const breakStatusDiv = document.getElementById('breakStatus');
+  if (!breakStatusDiv) return;
+  
+  if (stats.isOn12HourBreak) {
+    const now = Date.now();
+    const remainingTime = stats.breakEndTime - now;
+    
+    if (remainingTime > 0) {
+      const remainingHours = Math.floor(remainingTime / (60 * 60 * 1000));
+      const remainingMinutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+      const breakEndDate = new Date(stats.breakEndTime);
+      
+      breakStatusDiv.innerHTML = `
+        <div class="break-status active">
+          <h4>🚨 12-Hour Break Active</h4>
+          <p>Remaining: ${remainingHours}h ${remainingMinutes}m</p>
+          <p>Resumes: ${breakEndDate.toLocaleString()}</p>
+        </div>
+      `;
+      breakStatusDiv.style.display = 'block';
+    } else {
+      // Break should be over
+      breakStatusDiv.style.display = 'none';
+    }
+  } else {
+    breakStatusDiv.style.display = 'none';
+  }
 }
 
 // Start automation
@@ -210,9 +251,16 @@ async function startAutomation() {
   const enableFollowingExpansion = document.getElementById('enableFollowingExpansion').checked;
   const startPhase = document.getElementById('startPhase').value;
   const testMode = document.getElementById('testMode').checked;
+  const breakTestMode = document.getElementById('breakTestMode').checked;
   
   if (!ownUsername) {
     showStatus('Please enter your Instagram username', 'error');
+    return;
+  }
+  
+  // Validate that only one test mode is selected
+  if (testMode && breakTestMode) {
+    showStatus('Please select only one test mode', 'error');
     return;
   }
   
@@ -228,12 +276,14 @@ async function startAutomation() {
   let abbreviations = [];
   let schoolName = '';
   let totalAccounts = 0;
+  let maxFollow = null;
   
   if (startPhase === 'school' && !isNaN(schoolId)) {
     school = schools[schoolId];
     schoolName = school.name;
     instagramIds = school.instagramIds;
     abbreviations = school.abbreviations;
+    maxFollow = school.maxFollow;
     totalAccounts = school.instagramIds.length;
     validStartIndex = Math.max(0, Math.min(startAccountIndex, school.instagramIds.length - 1));
   } else if (startPhase === 'following_expansion') {
@@ -243,6 +293,7 @@ async function startAutomation() {
       school = schools[schoolId];
       abbreviations = school.abbreviations;
       schoolName = school.name;
+      maxFollow = school.maxFollow;
     } else {
       // Default to empty - will match all users
       abbreviations = [];
@@ -259,6 +310,9 @@ async function startAutomation() {
     'ikroop_chanana',
     'oliviamorakis'
   ];
+  
+  // Break test mode profile
+  const breakTestProfile = 'anna_calbos';
 
   // Save configuration to storage
   const config = {
@@ -268,10 +322,13 @@ async function startAutomation() {
     enableFollowingExpansion: enableFollowingExpansion,
     testMode: testMode,
     testProfiles: testProfiles,
+    breakTestMode: breakTestMode,
+    breakTestProfile: breakTestProfile,
     schoolId: schoolId,
     schoolName: schoolName,
     instagramIds: instagramIds,
     abbreviations: abbreviations,
+    maxFollow: maxFollow,
     currentFollowing: currentFollowing,
     currentAccountIndex: validStartIndex,
     totalFollows: 0,
@@ -304,10 +361,16 @@ async function startAutomation() {
   if (testMode) {
     startMessage = `🧪 TEST MODE: Testing with ${testProfiles.length} specific profiles`;
     startUrl = `https://www.instagram.com/${testProfiles[0]}/`;
+  } else if (breakTestMode) {
+    startMessage = `⏰ BREAK TEST MODE: Testing 12-hour break functionality with @${breakTestProfile}`;
+    startUrl = `https://www.instagram.com/${breakTestProfile}/`;
   } else if (startPhase === 'school') {
     const startAccount = school.instagramIds[validStartIndex];
     startMessage = validStartIndex === 0 ? 'Starting from first school account' : `Starting from school account ${validStartIndex + 1}/${school.instagramIds.length}`;
     startMessage += `: ${startAccount}`;
+    if (maxFollow) {
+      startMessage += ` (Max: ${maxFollow} follows)`;
+    }
     startUrl = `https://www.instagram.com/${startAccount}/`;
   } else if (startPhase === 'following_expansion') {
     startMessage = `Starting Following Expansion from your profile: ${ownUsername}`;
@@ -362,6 +425,9 @@ async function loadState() {
     if (result.config.testMode !== undefined) {
       document.getElementById('testMode').checked = result.config.testMode;
     }
+    if (result.config.breakTestMode !== undefined) {
+      document.getElementById('breakTestMode').checked = result.config.breakTestMode;
+    }
   }
 }
 
@@ -401,4 +467,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
 });
-
