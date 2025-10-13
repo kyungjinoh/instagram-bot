@@ -187,11 +187,11 @@
     <h1>📸 Instagram Follower Bot</h1>
     
     <div class="form-group">
-      <label for="schoolSelect">Select School (optional for Following Expansion):</label>
-      <select id="schoolSelect">
+      <label for="schoolSelect">Select School (required):</label>
+      <select id="schoolSelect" required>
         <option value="">-- Choose a school --</option>
       </select>
-      <div class="small-text">For Following Expansion, leave blank to match all users or select a school to filter by keywords</div>
+      <div class="small-text">School selection is required. The bot will use the school's keywords to filter people's bios in both phases.</div>
     </div>
     
     <div class="form-group">
@@ -244,6 +244,14 @@
         ⏰ 6-Hour Break Test Mode
       </label>
       <div class="small-text">Test the 6-hour break functionality by following @anna_calbos then triggering automatic break</div>
+    </div>
+    
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="phase2TestMode">
+        🔄 Phase 2 Test Mode
+      </label>
+      <div class="small-text">Test Following Expansion: @jonathankolon1 (1 follower) → @julianne.t.2028 (2 followers) → complete</div>
     </div>
     
     <button id="startBtn">Start Following</button>

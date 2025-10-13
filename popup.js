@@ -214,8 +214,20 @@ function updateStats(stats) {
   statsDiv.classList.add('active');
   
   document.getElementById('statSchool').textContent = stats.schoolName || '-';
-  document.getElementById('statAccounts').textContent = 
-    `${stats.currentAccountIndex + 1}/${stats.totalAccounts}`;
+  
+  // Show different stats based on phase
+  if (stats.phase === 'following_expansion') {
+    // Calculate unprocessed following count
+    const unprocessedCount = stats.followingList?.length 
+      ? stats.followingList.filter(u => !stats.processedFollowingAccounts?.includes(u)).length 
+      : 0;
+    document.getElementById('statAccounts').textContent = 
+      `Following: ${unprocessedCount} remaining`;
+  } else {
+    document.getElementById('statAccounts').textContent = 
+      `${stats.currentAccountIndex + 1}/${stats.totalAccounts}`;
+  }
+  
   document.getElementById('statHourly').textContent = `${stats.followsThisHour}/5`;
   document.getElementById('statTotal').textContent = stats.totalFollows;
   
@@ -264,6 +276,7 @@ async function startAutomation() {
   const startPhase = document.getElementById('startPhase').value;
   const testMode = document.getElementById('testMode').checked;
   const breakTestMode = document.getElementById('breakTestMode').checked;
+  const phase2TestMode = document.getElementById('phase2TestMode').checked;
   
   if (!ownUsername) {
     showStatus('Please enter your Instagram username', 'error');
@@ -271,14 +284,15 @@ async function startAutomation() {
   }
   
   // Validate that only one test mode is selected
-  if (testMode && breakTestMode) {
+  const testModeCount = [testMode, breakTestMode, phase2TestMode].filter(Boolean).length;
+  if (testModeCount > 1) {
     showStatus('Please select only one test mode', 'error');
     return;
   }
   
-  // Validate school selection only if starting from school phase
-  if (startPhase === 'school' && isNaN(schoolId)) {
-    showStatus('Please select a school', 'error');
+  // Validate school selection - ALWAYS required (for both phases, except test modes)
+  if (isNaN(schoolId) && !testMode && !breakTestMode && !phase2TestMode) {
+    showStatus('Please select a school - required for bio filtering', 'error');
     return;
   }
   
@@ -290,26 +304,20 @@ async function startAutomation() {
   let totalAccounts = 0;
   let maxFollow = null;
   
-  if (startPhase === 'school' && !isNaN(schoolId)) {
+  // Get school data for both phases (school selection is now required)
+  if (!isNaN(schoolId)) {
     school = schools[schoolId];
     schoolName = school.name;
-    instagramIds = school.instagramIds;
     abbreviations = school.abbreviations;
     maxFollow = school.maxFollow;
+    instagramIds = school.instagramIds; // Always set instagramIds for both phases
     totalAccounts = school.instagramIds.length;
-    validStartIndex = Math.max(0, Math.min(startAccountIndex, school.instagramIds.length - 1));
-  } else if (startPhase === 'following_expansion') {
-    // For following expansion, we still need abbreviations for filtering
-    // Use the selected school's abbreviations if available, otherwise empty
-    if (!isNaN(schoolId)) {
-      school = schools[schoolId];
-      abbreviations = school.abbreviations;
-      schoolName = school.name;
-      maxFollow = school.maxFollow;
+    
+    // Additional setup for school phase
+    if (startPhase === 'school') {
+      validStartIndex = Math.max(0, Math.min(startAccountIndex, school.instagramIds.length - 1));
     } else {
-      // Default to empty - will match all users
-      abbreviations = [];
-      schoolName = 'Any School';
+      validStartIndex = 0; // Following expansion doesn't use account index
     }
   }
   
@@ -325,6 +333,12 @@ async function startAutomation() {
   
   // Break test mode profile
   const breakTestProfile = 'anna_calbos';
+  
+  // Phase 2 test mode - simulated following accounts (process 1 follower from each)
+  const phase2TestFollowing = [
+    'jonathankolon1',
+    'julianne.t.2028'
+  ];
 
   // Save configuration to storage
   const config = {
@@ -336,6 +350,8 @@ async function startAutomation() {
     testProfiles: testProfiles,
     breakTestMode: breakTestMode,
     breakTestProfile: breakTestProfile,
+    phase2TestMode: phase2TestMode,
+    phase2TestFollowing: phase2TestFollowing,
     schoolId: schoolId,
     schoolName: schoolName,
     instagramIds: instagramIds,
@@ -376,6 +392,9 @@ async function startAutomation() {
   } else if (breakTestMode) {
     startMessage = `⏰ BREAK TEST MODE: Testing 6-hour break functionality with @${breakTestProfile}`;
     startUrl = `https://www.instagram.com/${breakTestProfile}/`;
+  } else if (phase2TestMode) {
+    startMessage = `🔄 PHASE 2 TEST MODE: Testing with ${phase2TestFollowing.length} accounts (1 follower each)`;
+    startUrl = `https://www.instagram.com/${phase2TestFollowing[0]}/`;
   } else if (startPhase === 'school') {
     const startAccount = school.instagramIds[validStartIndex];
     startMessage = validStartIndex === 0 ? 'Starting from first school account' : `Starting from school account ${validStartIndex + 1}/${school.instagramIds.length}`;
@@ -386,6 +405,9 @@ async function startAutomation() {
     startUrl = `https://www.instagram.com/${startAccount}/`;
   } else if (startPhase === 'following_expansion') {
     startMessage = `Starting Following Expansion from your profile: ${ownUsername}`;
+    if (schoolName) {
+      startMessage += ` (Filtering for: ${schoolName})`;
+    }
     startUrl = `https://www.instagram.com/${ownUsername}/`;
   }
   
@@ -440,6 +462,9 @@ async function loadState() {
     if (result.config.breakTestMode !== undefined) {
       document.getElementById('breakTestMode').checked = result.config.breakTestMode;
     }
+    if (result.config.phase2TestMode !== undefined) {
+      document.getElementById('phase2TestMode').checked = result.config.phase2TestMode;
+    }
   }
 }
 
@@ -449,12 +474,15 @@ function toggleAccountSelectVisibility() {
   const accountSelectGroup = document.getElementById('accountSelectGroup');
   const schoolSelect = document.getElementById('schoolSelect');
   
+  // School selection is ALWAYS required now
+  schoolSelect.required = true;
+  
   if (startPhase === 'following_expansion') {
+    // Hide account selection for following expansion (not applicable)
     accountSelectGroup.style.display = 'none';
-    schoolSelect.required = false;
   } else {
+    // Show account selection for school phase
     accountSelectGroup.style.display = 'block';
-    schoolSelect.required = true;
   }
 }
 

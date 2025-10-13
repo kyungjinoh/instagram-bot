@@ -9,6 +9,8 @@
   let navigationCount = 0;
   let lastProfileVisitTime = 0;
   let processedAccountsCount = 0;
+  let profilesCheckedWithoutFollow = 0;
+  let lastFollowTime = 0;
   
   // Utility: Wait for a random time to appear more human-like
   function randomDelay(min = 2000, max = 5000) {
@@ -299,6 +301,36 @@
     return true;
   }
   
+  // Handle 4-hour break when no follows after 50 profiles checked
+  async function handle4HourBreakNoMatches() {
+    const breakEndTime = Date.now() + (4 * 60 * 60 * 1000); // 4 hours from now
+    const breakEndDate = new Date(breakEndTime);
+    
+    console.log(`🚨 NO MATCHES AFTER 50 PROFILES - Starting 4-hour break`);
+    console.log(`⏰ Break will end at: ${breakEndDate.toLocaleString()}`);
+    
+    // Store break information in config
+    await updateConfig({
+      active: false,
+      isOn6HourBreak: true, // Reuse same break flag
+      breakStartTime: Date.now(),
+      breakEndTime: breakEndTime,
+      status: `4-hour break: No matches found in 50 profiles. Resuming at ${breakEndDate.toLocaleString()}`,
+      statusType: 'warning'
+    });
+    
+    // Reset counter after break
+    profilesCheckedWithoutFollow = 0;
+    
+    // Set up a one-time alarm to resume after 4 hours
+    chrome.runtime.sendMessage({
+      action: 'setBreakAlarm',
+      breakEndTime: breakEndTime
+    });
+    
+    return true;
+  }
+  
   // Check if we're currently on a 6-hour break
   function isOn6HourBreak() {
     if (!config || !config.isOn6HourBreak) {
@@ -432,7 +464,7 @@
     let scrollAttempts = 0;
     let consecutiveNoChangeCount = 0;
     let lastScrollTop = -1;
-    const maxConsecutiveNoChange = 8;
+    const maxConsecutiveNoChange = 3; // Stop after 3 consecutive scrolls with no new following
     const maxTotalAttempts = 1000;
     
     await updateConfig({
@@ -718,7 +750,7 @@
     let scrollAttempts = 0;
     let consecutiveNoChangeCount = 0;
     let lastScrollTop = -1;
-    const maxConsecutiveNoChange = 8; // Must have no new followers 8 times in a row
+    const maxConsecutiveNoChange = 3; // Stop after 3 consecutive scrolls with no new followers
     const maxTotalAttempts = 1000; // Safety limit - max 1000 scroll attempts
     
     await updateConfig({
@@ -1024,6 +1056,9 @@
   // Main automation logic
   async function processAutomation() {
     console.log(`🔍 processAutomation called - isProcessing: ${isProcessing}, config.active: ${config?.active}, isScrollingFollowers: ${isScrollingFollowers}`);
+    if (config) {
+      console.log(`🔍 Mode: testMode=${config.testMode}, breakTestMode=${config.breakTestMode}, phase2TestMode=${config.phase2TestMode}, phase=${config.phase}`);
+    }
     
     if (isProcessing || !config || isScrollingFollowers) {
       console.log(`⏭️ Skipping automation - isProcessing: ${isProcessing}, config.active: ${config?.active}, isScrollingFollowers: ${isScrollingFollowers}`);
@@ -1047,9 +1082,10 @@
       return;
     }
     
-    // Check for daily limit popup
+    // Check for daily limit popup (works for both Phase 1 and Phase 2)
     if (checkAndCloseDailyLimitPopup()) {
       // If daily limit popup was detected and closed, wait a bit before continuing
+      console.log(`🔔 Daily limit popup detected and closed (Phase: ${config.phase || 'school'})`);
       await randomDelay(2000, 3000);
       return;
     }
@@ -1308,6 +1344,285 @@
         return;
       }
       
+      // ============= PHASE 2 TEST MODE =============
+      // Must come BEFORE school phase logic to prevent conflicts
+      
+      if (config.phase2TestMode) {
+        console.log('🔄 PHASE 2 TEST MODE: Active');
+        
+        // Initialize with test following list if not already done
+        if (!config.followingList || config.followingList.length === 0) {
+          console.log('🔄 PHASE 2 TEST MODE: Initializing test following list');
+          config.followingList = config.phase2TestFollowing || [];
+          config.followingCollected = true;
+          config.currentFollowingIndex = 0;
+          config.processedFollowingAccounts = config.processedFollowingAccounts || [];
+          
+          await updateConfig({
+            followingList: config.followingList,
+            followingCollected: true,
+            currentFollowingIndex: 0,
+            phase: 'following_expansion', // Ensure we're in following expansion phase
+            status: `🔄 PHASE 2 TEST MODE: Ready to process ${config.followingList.length} test following accounts`,
+            statusType: 'success'
+          });
+        }
+        
+        // Get unprocessed following accounts
+        const unprocessedFollowing = config.followingList.filter(
+          username => !config.processedFollowingAccounts.includes(username)
+        );
+        
+        console.log(`🔄 PHASE 2 TEST MODE: ${unprocessedFollowing.length} unprocessed, ${config.processedFollowingAccounts.length} processed`);
+        
+        // Check if all test following accounts are processed
+        if (unprocessedFollowing.length === 0) {
+          console.log('🔄 PHASE 2 TEST MODE: All test following accounts processed!');
+          await updateConfig({ 
+            active: false,
+            status: '🔄 PHASE 2 TEST MODE: All test following accounts processed!',
+            statusType: 'success'
+          });
+          isProcessing = false;
+          return;
+        }
+        
+        // Get current following account to process
+        const currentFollowingAccount = unprocessedFollowing[0];
+        console.log(`🔄 PHASE 2 TEST MODE: Processing @${currentFollowingAccount}`);
+        
+        // Check if we're on the following account's page
+        if (currentUrl.includes(`instagram.com/${currentFollowingAccount}`) && !currentUrl.includes('/followers')) {
+          console.log(`🔄 PHASE 2 TEST MODE: On @${currentFollowingAccount} page, clicking followers...`);
+          await randomDelay(2000, 4000);
+          
+          const followersBtn = findFollowersButton();
+          if (followersBtn) {
+            console.log('Clicking followers button...');
+            followersBtn.click();
+            await randomDelay(3000, 5000);
+          }
+        }
+        // On followers page - collect followers
+        else if (currentUrl.includes(`/followers`) && !config.followersCollected) {
+          console.log(`🔄 PHASE 2 TEST MODE: On followers page, collecting...`);
+          
+          const allFollowers = await scrollAndCollectAllFollowers();
+          
+          if (allFollowers.length === 0) {
+            console.log(`🔄 PHASE 2 TEST MODE: No followers for @${currentFollowingAccount}, moving to next`);
+            config.processedFollowingAccounts.push(currentFollowingAccount);
+            await updateConfig({
+              processedFollowingAccounts: config.processedFollowingAccounts,
+              currentAccountFollowers: [],
+              followersCollected: false,
+              currentFollowerIndex: 0
+            });
+            
+            isProcessing = false;
+            return;
+          }
+          
+          config.currentAccountFollowers = allFollowers;
+          config.followersCollected = true;
+          config.currentFollowerIndex = 0;
+          
+          await updateConfig({
+            currentAccountFollowers: allFollowers,
+            followersCollected: true,
+            currentFollowerIndex: 0,
+            status: `🔄 PHASE 2 TEST MODE: Processing 1 follower from @${currentFollowingAccount} (${allFollowers.length} total)`,
+            statusType: 'success'
+          });
+          
+          // Close dialog
+          const dialog = document.querySelector('div[role="dialog"]');
+          if (dialog) {
+            const closeButton = dialog.querySelector('svg[aria-label="Close"], button[aria-label="Close"]');
+            if (closeButton) {
+              closeButton.click();
+            }
+          }
+          
+          await randomDelay(2000, 3000);
+        }
+        // Followers collected, visit followers (1 from first account, 2 from second)
+        else if (config.followersCollected && config.currentAccountFollowers.length > 0) {
+          // Determine how many followers to process based on which following account we're on
+          const processedCount = config.processedFollowingAccounts.length;
+          const maxFollowersForThisAccount = (processedCount === 0) ? 1 : 2; // 1 for first, 2 for second
+          
+          console.log(`🔄 PHASE 2 TEST MODE: Processing up to ${maxFollowersForThisAccount} followers from account ${processedCount + 1}`);
+          
+          // Check if we've processed enough followers for this account
+          if (config.currentFollowerIndex >= maxFollowersForThisAccount) {
+            console.log(`🔄 PHASE 2 TEST MODE: Processed ${config.currentFollowerIndex} followers from @${currentFollowingAccount}, moving to next`);
+            
+            // Mark as processed and move to next following account
+            config.processedFollowingAccounts.push(currentFollowingAccount);
+            await updateConfig({
+              processedFollowingAccounts: config.processedFollowingAccounts,
+              currentAccountFollowers: [],
+              followersCollected: false,
+              currentFollowerIndex: 0
+            });
+            
+            // Get remaining unprocessed
+            const remainingUnprocessed = config.followingList.filter(
+              u => !config.processedFollowingAccounts.includes(u)
+            );
+            
+            if (remainingUnprocessed.length > 0) {
+              const nextFollowingAccount = remainingUnprocessed[0];
+              console.log(`🔄 PHASE 2 TEST MODE: Moving to @${nextFollowingAccount} (${remainingUnprocessed.length} remaining)`);
+              
+              await updateConfig({
+                status: `🔄 PHASE 2 TEST MODE: Processing @${nextFollowingAccount}`,
+                statusType: 'info'
+              });
+              
+              if (!safeNavigate(`https://www.instagram.com/${nextFollowingAccount}/`)) {
+                isProcessing = false;
+                return;
+              }
+              await randomDelay(3000, 5000);
+            } else {
+              console.log('🔄 PHASE 2 TEST MODE: All test following accounts processed!');
+              await updateConfig({ 
+                active: false,
+                status: '🔄 PHASE 2 TEST MODE: Completed!',
+                statusType: 'success'
+              });
+              isProcessing = false;
+            }
+            
+            isProcessing = false;
+            return;
+          }
+          
+          // Continue processing followers
+          const onProfilePage = currentUrl.match(/instagram\.com\/[a-zA-Z0-9._]+\/?$/) && 
+                                !currentUrl.includes(currentFollowingAccount) &&
+                                !currentUrl.includes('/followers');
+          
+          if (onProfilePage) {
+            console.log(`🔄 PHASE 2 TEST MODE: On follower profile, checking bio...`);
+            await randomDelay(2000, 3000);
+            
+            // Check if already following
+            if (!isAlreadyFollowing()) {
+              // Get bio and check
+              const bio = getBioText();
+              const hasAbbreviation = checkBioForAbbreviation(bio, config.abbreviations);
+              
+              if (hasAbbreviation) {
+                const followed = findAndClickFollowButton();
+                
+                if (followed) {
+                  console.log(`🔄 PHASE 2 TEST MODE: Followed user!`);
+                  config.totalFollows++;
+                  config.followsThisHour++;
+                  
+                  await updateConfig({
+                    totalFollows: config.totalFollows,
+                    followsThisHour: config.followsThisHour,
+                    status: `🔄 PHASE 2 TEST MODE: Followed ${config.totalFollows} users`,
+                    statusType: 'success'
+                  });
+                  
+                  await randomDelay(3000, 5000);
+                }
+              }
+            }
+            
+            // Increment follower index after processing
+            config.currentFollowerIndex++;
+            await updateConfig({ currentFollowerIndex: config.currentFollowerIndex });
+            
+            console.log(`🔄 PHASE 2 TEST MODE: Processed ${config.currentFollowerIndex}/${maxFollowersForThisAccount} followers from @${currentFollowingAccount}`);
+            
+            // Check if we've processed enough followers for this account
+            if (config.currentFollowerIndex >= maxFollowersForThisAccount) {
+              console.log(`🔄 PHASE 2 TEST MODE: Reached limit (${maxFollowersForThisAccount}), moving to next following account`);
+              
+              config.processedFollowingAccounts.push(currentFollowingAccount);
+              await updateConfig({
+                processedFollowingAccounts: config.processedFollowingAccounts,
+                currentAccountFollowers: [],
+                followersCollected: false,
+                currentFollowerIndex: 0
+              });
+              
+              // Get remaining unprocessed
+              const remainingUnprocessed = config.followingList.filter(
+                u => !config.processedFollowingAccounts.includes(u)
+              );
+              
+              if (remainingUnprocessed.length > 0) {
+                const nextFollowingAccount = remainingUnprocessed[0];
+                console.log(`🔄 PHASE 2 TEST MODE: Moving to @${nextFollowingAccount} (${remainingUnprocessed.length} remaining)`);
+                
+                await updateConfig({
+                  status: `🔄 PHASE 2 TEST MODE: Processing @${nextFollowingAccount}`,
+                  statusType: 'info'
+                });
+                
+                if (!safeNavigate(`https://www.instagram.com/${nextFollowingAccount}/`)) {
+                  isProcessing = false;
+                  return;
+                }
+                await randomDelay(3000, 5000);
+              } else {
+                console.log('🔄 PHASE 2 TEST MODE: All test following accounts processed!');
+                await updateConfig({ 
+                  active: false,
+                  status: '🔄 PHASE 2 TEST MODE: All test following accounts processed!',
+                  statusType: 'success'
+                });
+                isProcessing = false;
+              }
+              
+              isProcessing = false;
+              return;
+            }
+            
+            // Not done yet, navigate to next follower
+            const nextUsername = config.currentAccountFollowers[config.currentFollowerIndex];
+            console.log(`🔄 PHASE 2 TEST MODE: Navigating to next follower ${config.currentFollowerIndex + 1}/${maxFollowersForThisAccount}: ${nextUsername}`);
+            
+            if (!safeNavigate(`https://www.instagram.com/${nextUsername}/`)) {
+              isProcessing = false;
+              return;
+            }
+            await randomDelay(2000, 3000);
+            isProcessing = false;
+            return;
+          } else {
+            // Navigate to first follower
+            const firstUsername = config.currentAccountFollowers[config.currentFollowerIndex];
+            console.log(`🔄 PHASE 2 TEST MODE: Navigating to follower ${config.currentFollowerIndex + 1}: ${firstUsername}`);
+            
+            if (!safeNavigate(`https://www.instagram.com/${firstUsername}/`)) {
+              isProcessing = false;
+              return;
+            }
+            await randomDelay(2000, 3000);
+          }
+        }
+        // Navigate to first following account
+        else if (!currentUrl.includes(currentFollowingAccount)) {
+          console.log(`🔄 PHASE 2 TEST MODE: Navigating to @${currentFollowingAccount}`);
+          if (!safeNavigate(`https://www.instagram.com/${currentFollowingAccount}/`)) {
+            isProcessing = false;
+            return;
+          }
+          await randomDelay(2000, 3000);
+        }
+        
+        isProcessing = false;
+        return;
+      }
+      
       // State 1: On account page, need to click followers
       if (currentUrl.includes(`instagram.com/${currentAccount}`) && !currentUrl.includes('/followers')) {
         await randomDelay(2000, 4000);
@@ -1436,6 +1751,10 @@
               config.totalFollows++;
               config.followsThisHour++;
               
+              // Reset no-follow counter after successful follow
+              profilesCheckedWithoutFollow = 0;
+              lastFollowTime = Date.now();
+              
               await updateConfig({
                 totalFollows: config.totalFollows,
                 followsThisHour: config.followsThisHour,
@@ -1444,6 +1763,21 @@
               });
               
               await randomDelay(3000, 5000);
+            } else {
+              // Didn't follow - increment counter
+              profilesCheckedWithoutFollow++;
+              console.log(`📊 No follow: ${profilesCheckedWithoutFollow}/50 profiles checked without match`);
+            }
+          } else {
+            // No keyword match - increment counter
+            profilesCheckedWithoutFollow++;
+            console.log(`📊 No match: ${profilesCheckedWithoutFollow}/50 profiles checked without follow`);
+            
+            // Check if we need a 4-hour break
+            if (profilesCheckedWithoutFollow >= 50) {
+              console.log('🚨 50 profiles checked without any follows - triggering 4-hour break');
+              await handle4HourBreakNoMatches();
+              return;
             }
           }
           
@@ -1625,8 +1959,34 @@
         }
         
         // State 3: Following collected, navigate to first following account
-        else if (config.followingCollected && config.currentFollowingIndex < config.followingList.length && !config.followersCollected) {
-          const currentFollowingAccount = config.followingList[config.currentFollowingIndex];
+        else if (config.followingCollected && !config.followersCollected) {
+          // Get current unprocessed following account (use filtered array, not index)
+          const unprocessedFollowing = config.followingList.filter(
+            username => !config.processedFollowingAccounts.includes(username)
+          );
+          
+          console.log(`📊 [Following Expansion] State 3 - Unprocessed: ${unprocessedFollowing.length}, Processed: ${config.processedFollowingAccounts.length}`);
+          
+          if (unprocessedFollowing.length === 0) {
+            console.log('✅ All following accounts processed, refreshing list...');
+            await updateConfig({ 
+              followingCollected: false,
+              currentFollowingIndex: 0,
+              status: 'Refreshing following list...',
+              statusType: 'info'
+            });
+            
+            if (!safeNavigate(`https://www.instagram.com/${config.ownUsername}/`)) {
+              isProcessing = false;
+              return;
+            }
+            await randomDelay(2000, 3000);
+            isProcessing = false;
+            return;
+          }
+          
+          const currentFollowingAccount = unprocessedFollowing[0]; // Always use first unprocessed
+          console.log(`📊 [Following Expansion] Current following account: @${currentFollowingAccount}`);
           
           // Check if we're on the following account's page
           if (currentUrl.includes(`instagram.com/${currentFollowingAccount}`) && !currentUrl.includes('/followers')) {
@@ -1653,13 +2013,21 @@
         else if (config.followingCollected && currentUrl.includes('/followers') && !config.followersCollected) {
           console.log('On followers page of following account, collecting followers...');
           
+          // Get current following account from unprocessed list
+          const unprocessedFollowing = config.followingList.filter(
+            username => !config.processedFollowingAccounts.includes(username)
+          );
+          const currentFollowingAccount = unprocessedFollowing[0];
+          
+          console.log(`📊 [Following Expansion] Collecting followers from @${currentFollowingAccount}`);
+          
           const allFollowers = await scrollAndCollectAllFollowers();
           
           if (allFollowers.length === 0) {
-            console.log('No followers found for this following account, moving to next');
+            console.log(`No followers found for @${currentFollowingAccount}, moving to next`);
             
             // Mark this following account as processed
-            config.processedFollowingAccounts.push(config.followingList[config.currentFollowingIndex]);
+            config.processedFollowingAccounts.push(currentFollowingAccount);
             await updateConfig({
               processedFollowingAccounts: config.processedFollowingAccounts
             });
@@ -1694,22 +2062,36 @@
         
         // State 5: Followers collected, visit each one
         else if (config.followersCollected && config.currentFollowerIndex < config.currentAccountFollowers.length) {
-          const currentFollowingAccount = config.followingList[config.currentFollowingIndex];
+          // Get current unprocessed following account (use filtered array, not index)
+          const unprocessedFollowing = config.followingList.filter(
+            username => !config.processedFollowingAccounts.includes(username)
+          );
+          
+          console.log(`📊 [Following Expansion] State 5 - Unprocessed: ${unprocessedFollowing.length}, Processing follower ${config.currentFollowerIndex + 1}/${config.currentAccountFollowers.length}`);
+          
+          if (unprocessedFollowing.length === 0) {
+            console.log('⚠️ [Following Expansion] No unprocessed following accounts, but still have followers to process. Refreshing...');
+            await updateConfig({ 
+              followingCollected: false,
+              currentFollowingIndex: 0,
+              currentAccountFollowers: [],
+              followersCollected: false,
+              currentFollowerIndex: 0
+            });
+            isProcessing = false;
+            return;
+          }
+          
+          const currentFollowingAccount = unprocessedFollowing[0]; // Always use first unprocessed
+          console.log(`📊 [Following Expansion] Current following account: @${currentFollowingAccount}`);
           const onProfilePage = currentUrl.match(/instagram\.com\/[a-zA-Z0-9._]+\/?$/) && 
                                 !currentUrl.includes(currentFollowingAccount) &&
                                 !currentUrl.includes(config.ownUsername) &&
                                 !currentUrl.includes('/followers');
           
           if (onProfilePage) {
-            // Check rate limiting before processing profile
-            if (!canVisitProfile()) {
-              isProcessing = false;
-              return;
-            }
-            
             // We're on a follower's profile, check bio and follow
             console.log('On follower profile page, checking bio...');
-            lastProfileVisitTime = Date.now(); // Mark profile visit time
             await randomDelay(2000, 3000);
             
             // Check if already following
@@ -1736,6 +2118,7 @@
                 }
                 
                 console.log(`✅ [Following Expansion] Rate limit passed, navigating to ${nextUsername}`);
+                lastProfileVisitTime = Date.now(); // Mark visit time before navigation
                 const navigateResult = safeNavigate(`https://www.instagram.com/${nextUsername}/`);
                 console.log(`🧭 [Following Expansion] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
               } else {
@@ -1764,6 +2147,10 @@
                 config.totalFollows++;
                 config.followsThisHour++;
                 
+                // Reset no-follow counter after successful follow
+                profilesCheckedWithoutFollow = 0;
+                lastFollowTime = Date.now();
+                
                 await updateConfig({
                   totalFollows: config.totalFollows,
                   followsThisHour: config.followsThisHour,
@@ -1772,6 +2159,21 @@
                 });
                 
                 await randomDelay(3000, 5000);
+              } else {
+                // Didn't follow - increment counter
+                profilesCheckedWithoutFollow++;
+                console.log(`📊 [Following Expansion] No follow: ${profilesCheckedWithoutFollow}/50 profiles checked without match`);
+              }
+            } else {
+              // No keyword match - increment counter
+              profilesCheckedWithoutFollow++;
+              console.log(`📊 [Following Expansion] No match: ${profilesCheckedWithoutFollow}/50 profiles checked without follow`);
+              
+              // Check if we need a 4-hour break
+              if (profilesCheckedWithoutFollow >= 50) {
+                console.log('🚨 [Following Expansion] 50 profiles checked without any follows - triggering 4-hour break');
+                await handle4HourBreakNoMatches();
+                return;
               }
             }
             
@@ -1809,6 +2211,7 @@
             }
             
             console.log(`✅ [Following Expansion] Rate limit passed, navigating to ${nextUsername}`);
+            lastProfileVisitTime = Date.now(); // Mark visit time before navigation
             const navigateResult = safeNavigate(`https://www.instagram.com/${nextUsername}/`);
             console.log(`🧭 [Following Expansion] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
             await randomDelay(2000, 3000);
@@ -1827,6 +2230,7 @@
             }
             
             console.log(`✅ [Following Expansion] Rate limit passed, navigating to first follower ${firstUsername}`);
+            lastProfileVisitTime = Date.now(); // Mark visit time before navigation
             const navigateResult = safeNavigate(`https://www.instagram.com/${firstUsername}/`);
             console.log(`🧭 [Following Expansion] Navigation result: ${navigateResult ? 'SUCCESS' : 'FAILED'}`);
             if (!navigateResult) {
@@ -1847,11 +2251,14 @@
   // Move to next Instagram account (or transition to following expansion phase)
   async function moveToNextAccount() {
     console.log('Moving to next account...');
+    console.log(`📊 Current account: ${config.currentAccountIndex + 1}/${config.instagramIds?.length || 0}, Phase: ${config.phase}`);
     
     config.currentAccountIndex++;
     config.currentAccountFollowers = [];
     config.followersCollected = false;
     config.currentFollowerIndex = 0;
+    
+    console.log(`📊 Moving to account: ${config.currentAccountIndex + 1}/${config.instagramIds?.length || 0}`);
     
     if (config.currentAccountIndex >= config.instagramIds.length) {
       // All school accounts processed
@@ -1886,6 +2293,7 @@
           status: 'Completed! All accounts processed.',
           statusType: 'success'
         });
+        isProcessing = false; // Reset processing flag
         return;
       }
     }
@@ -1910,17 +2318,20 @@
   async function moveToNextFollowingAccount() {
     console.log('Moving to next following account...');
     
-    config.currentFollowingIndex++;
+    // Reset followers data for next account
     config.currentAccountFollowers = [];
     config.followersCollected = false;
     config.currentFollowerIndex = 0;
     
-    // Filter out already processed following accounts
+    // Filter out already processed following accounts from the ORIGINAL list
     let unprocessedFollowing = config.followingList.filter(
       username => !config.processedFollowingAccounts.includes(username)
     );
     
-    if (config.currentFollowingIndex >= unprocessedFollowing.length) {
+    console.log(`📊 Total following: ${config.followingList.length}, Processed: ${config.processedFollowingAccounts.length}, Remaining: ${unprocessedFollowing.length}`);
+    
+    // Check if there are any unprocessed following accounts left
+    if (unprocessedFollowing.length === 0) {
       // All following accounts in this batch processed
       console.log('🎉 Batch complete! Refreshing following list to check for new accounts...');
       
@@ -1940,16 +2351,19 @@
       return;
     }
     
+    // Get the FIRST unprocessed account (index 0 of filtered array)
+    const nextAccount = unprocessedFollowing[0];
+    console.log(`📊 Next unprocessed account: ${nextAccount} (1/${unprocessedFollowing.length} remaining)`);
+    
     await updateConfig({
-      currentFollowingIndex: config.currentFollowingIndex,
+      currentFollowingIndex: 0, // Reset to 0 since we're using filtered array
       currentAccountFollowers: [],
       followersCollected: false,
       currentFollowerIndex: 0,
-      status: `Processing following ${config.currentFollowingIndex + 1}/${unprocessedFollowing.length}`,
+      status: `Processing following account: ${nextAccount} (${unprocessedFollowing.length} remaining)`,
       statusType: 'info'
     });
     
-    const nextAccount = unprocessedFollowing[config.currentFollowingIndex];
     if (!safeNavigate(`https://www.instagram.com/${nextAccount}/`)) {
       return; // Navigation was blocked by anti-loop protection
     }
@@ -1993,6 +2407,15 @@
       console.log('   2. Follow the profile');
       console.log('   3. Trigger 6-hour break automatically');
       console.log('⏰ Perfect for testing the break functionality!');
+    } else if (config.phase2TestMode) {
+      console.log('🔄 PHASE 2 TEST MODE INITIALIZED');
+      console.log(`🔄 Test following accounts: ${config.phase2TestFollowing ? config.phase2TestFollowing.join(', ') : 'None'}`);
+      console.log(`🔄 School keywords: [${config.abbreviations.join(', ')}]`);
+      console.log('🔄 This mode will:');
+      console.log('   1. Visit @jonathankolon1 → collect followers → process 1 follower');
+      console.log('   2. Visit @julianne.t.2028 → collect followers → process 2 followers');
+      console.log('   3. Complete when both accounts done');
+      console.log('🔄 Fast testing: Total 3 followers processed!');
     } else {
       console.log('🤖 Instagram automation initialized with TWO-PHASE workflow');
       console.log('📋 PHASE 1 (School): Collect ALL followers → Visit each profile → Move to next account');
