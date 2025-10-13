@@ -335,6 +335,33 @@
     return true;
   }
   
+  // Handle 4-hour break when rate limited (Try Again Later error)
+  async function handle4HourBreakRateLimit() {
+    const breakEndTime = Date.now() + (4 * 60 * 60 * 1000); // 4 hours from now
+    const breakEndDate = new Date(breakEndTime);
+    
+    console.log(`🚨 RATE LIMIT ERROR - Starting 4-hour break`);
+    console.log(`⏰ Break will end at: ${breakEndDate.toLocaleString()}`);
+    
+    // Store break information in config
+    await updateConfig({
+      active: false,
+      isOn6HourBreak: true, // Reuse same break flag
+      breakStartTime: Date.now(),
+      breakEndTime: breakEndTime,
+      status: `4-hour break: Rate limited by Instagram. Resuming at ${breakEndDate.toLocaleString()}`,
+      statusType: 'warning'
+    });
+    
+    // Set up a one-time alarm to resume after 4 hours
+    chrome.runtime.sendMessage({
+      action: 'setBreakAlarm',
+      breakEndTime: breakEndTime
+    });
+    
+    return true;
+  }
+  
   // Handle 4-hour break when no follows after 50 profiles checked
   async function handle4HourBreakNoMatches() {
     const breakEndTime = Date.now() + (4 * 60 * 60 * 1000); // 4 hours from now
@@ -1112,7 +1139,8 @@
     
     // Check for "Try Again Later" error first (highest priority)
     if (checkForTryAgainLaterError()) {
-      await handle6HourBreak();
+      // Use 4-hour break instead of 6-hour for rate limiting
+      await handle4HourBreakRateLimit();
       return;
     }
     
@@ -1664,11 +1692,6 @@
         return;
       }
       
-      // ============= SCHOOL PHASE (PHASE 1) =============
-      // States 1-4 are only for school phase
-      
-      if (config.phase === 'school' && currentAccount) {
-        
       // State 1: On account page, need to click followers
       if (currentUrl.includes(`instagram.com/${currentAccount}`) && !currentUrl.includes('/followers')) {
         await randomDelay(2000, 4000);
@@ -1721,7 +1744,7 @@
       }
       
       // State 3: Followers collected, start visiting them
-      if (config.followersCollected && config.currentFollowerIndex < config.currentAccountFollowers.length) {
+      else if (config.followersCollected && config.currentFollowerIndex < config.currentAccountFollowers.length) {
         // Check if we're on a profile page (not the main account or followers page)
         const currentAccount = config.instagramIds[config.currentAccountIndex];
         const onProfilePage = currentUrl.match(/instagram\.com\/[a-zA-Z0-9._]+\/?$/) && 
@@ -1920,21 +1943,18 @@
         }
       }
       
-      // State 4: All followers processed for this account (SCHOOL PHASE ONLY)
-      if (config.followersCollected && config.currentFollowerIndex >= config.currentAccountFollowers.length) {
-        console.log('All followers processed for this school account');
+      // State 4: All followers processed for this account
+      else if (config.followersCollected && config.currentFollowerIndex >= config.currentAccountFollowers.length) {
+        console.log('All followers processed for this account');
         await moveToNextAccount();
         return;
       }
-      
-      } // End of school phase block
       
       // ============= FOLLOWING EXPANSION PHASE =============
       // Process accounts from own following list
       
       if (config.phase === 'following_expansion') {
         console.log('📢 Following Expansion Phase active');
-        console.log(`📊 followingCollected: ${config.followingCollected}, followersCollected: ${config.followersCollected}, currentFollowerIndex: ${config.currentFollowerIndex}, followers count: ${config.currentAccountFollowers?.length || 0}`);
         
         // State 1: On own profile, need to click following
         if (currentUrl.includes(`instagram.com/${config.ownUsername}`) && !currentUrl.includes('/following')) {
@@ -1973,13 +1993,33 @@
           
           console.log(`📊 Total following: ${allFollowing.length}, Unprocessed: ${unprocessedFollowing.length}`);
           
-          if (unprocessedFollowing.length === 0) {
-            console.log('✅ All following accounts have been processed!');
+          // Only check for completion if we're collecting following for the first time
+          // Don't stop if we're refreshing after processing a batch
+          if (unprocessedFollowing.length === 0 && config.processedFollowingAccounts.length === 0) {
+            console.log('✅ No following accounts found at all!');
             await updateConfig({ 
               active: false,
-              status: 'All following accounts processed!',
-              statusType: 'success'
+              status: 'No following accounts to process',
+              statusType: 'error'
             });
+            return;
+          }
+          
+          // If all processed but we have some, just refresh the list
+          if (unprocessedFollowing.length === 0 && config.processedFollowingAccounts.length > 0) {
+            console.log('🔄 All current following processed, refreshing list to find new accounts...');
+            await updateConfig({ 
+              followingCollected: false,
+              currentFollowingIndex: 0,
+              status: 'Refreshing following list for new accounts...',
+              statusType: 'info'
+            });
+            
+            // Navigate to own profile to refresh
+            await randomDelay(2000, 3000);
+            if (!safeNavigate(`https://www.instagram.com/${config.ownUsername}/`)) {
+              return;
+            }
             return;
           }
           
@@ -2008,8 +2048,7 @@
         }
         
         // State 3: Following collected, navigate to first following account
-        // Skip if dialog is already open (move to State 4)
-        else if (config.followingCollected && !config.followersCollected && !document.querySelector('div[role="dialog"]')) {
+        else if (config.followingCollected && !config.followersCollected) {
           // Get current unprocessed following account (use filtered array, not index)
           const unprocessedFollowing = config.followingList.filter(
             username => !config.processedFollowingAccounts.includes(username)
@@ -2049,30 +2088,19 @@
               followersBtn.click();
               await randomDelay(3000, 5000);
             }
-            
-            isProcessing = false;
-            return;
           } else if (!currentUrl.includes(`instagram.com/${currentFollowingAccount}`)) {
             // Navigate to the following account
             console.log(`Navigating to following account: ${currentFollowingAccount}`);
             if (!safeNavigate(`https://www.instagram.com/${currentFollowingAccount}/`)) {
-              isProcessing = false;
               return;
             }
             await randomDelay(2000, 3000);
-            isProcessing = false;
-            return;
           }
-          
-          isProcessing = false;
         }
         
         // State 4: On followers page of a following account - collect followers
-        // Check for both URL change AND dialog presence
-        else if (config.followingCollected && !config.followersCollected && 
-                 (currentUrl.includes('/followers') || document.querySelector('div[role="dialog"]'))) {
+        else if (config.followingCollected && currentUrl.includes('/followers') && !config.followersCollected) {
           console.log('On followers page of following account, collecting followers...');
-          console.log(`📊 URL includes /followers: ${currentUrl.includes('/followers')}, Dialog present: ${!!document.querySelector('div[role="dialog"]')}`);
           
           // Get current following account from unprocessed list
           const unprocessedFollowing = config.followingList.filter(
@@ -2300,13 +2328,6 @@
             await randomDelay(2000, 3000);
           }
         }
-        
-        // Fallback: No state matched, log current status
-        console.log('⚠️ [Following Expansion] No state matched');
-        console.log(`📊 URL: ${currentUrl}`);
-        console.log(`📊 Dialog present: ${!!document.querySelector('div[role="dialog"]')}`);
-        console.log(`📊 followingCollected: ${config.followingCollected}, followersCollected: ${config.followersCollected}`);
-        isProcessing = false;
       }
       
     } catch (error) {
