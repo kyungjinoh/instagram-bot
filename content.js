@@ -1934,6 +1934,7 @@
       
       if (config.phase === 'following_expansion') {
         console.log('📢 Following Expansion Phase active');
+        console.log(`📊 followingCollected: ${config.followingCollected}, followersCollected: ${config.followersCollected}, currentFollowerIndex: ${config.currentFollowerIndex}, followers count: ${config.currentAccountFollowers?.length || 0}`);
         
         // State 1: On own profile, need to click following
         if (currentUrl.includes(`instagram.com/${config.ownUsername}`) && !currentUrl.includes('/following')) {
@@ -2007,7 +2008,8 @@
         }
         
         // State 3: Following collected, navigate to first following account
-        else if (config.followingCollected && !config.followersCollected) {
+        // Skip if dialog is already open (move to State 4)
+        else if (config.followingCollected && !config.followersCollected && !document.querySelector('div[role="dialog"]')) {
           // Get current unprocessed following account (use filtered array, not index)
           const unprocessedFollowing = config.followingList.filter(
             username => !config.processedFollowingAccounts.includes(username)
@@ -2047,19 +2049,30 @@
               followersBtn.click();
               await randomDelay(3000, 5000);
             }
+            
+            isProcessing = false;
+            return;
           } else if (!currentUrl.includes(`instagram.com/${currentFollowingAccount}`)) {
             // Navigate to the following account
             console.log(`Navigating to following account: ${currentFollowingAccount}`);
             if (!safeNavigate(`https://www.instagram.com/${currentFollowingAccount}/`)) {
+              isProcessing = false;
               return;
             }
             await randomDelay(2000, 3000);
+            isProcessing = false;
+            return;
           }
+          
+          isProcessing = false;
         }
         
         // State 4: On followers page of a following account - collect followers
-        else if (config.followingCollected && currentUrl.includes('/followers') && !config.followersCollected) {
+        // Check for both URL change AND dialog presence
+        else if (config.followingCollected && !config.followersCollected && 
+                 (currentUrl.includes('/followers') || document.querySelector('div[role="dialog"]'))) {
           console.log('On followers page of following account, collecting followers...');
+          console.log(`📊 URL includes /followers: ${currentUrl.includes('/followers')}, Dialog present: ${!!document.querySelector('div[role="dialog"]')}`);
           
           // Get current following account from unprocessed list
           const unprocessedFollowing = config.followingList.filter(
@@ -2287,6 +2300,13 @@
             await randomDelay(2000, 3000);
           }
         }
+        
+        // Fallback: No state matched, log current status
+        console.log('⚠️ [Following Expansion] No state matched');
+        console.log(`📊 URL: ${currentUrl}`);
+        console.log(`📊 Dialog present: ${!!document.querySelector('div[role="dialog"]')}`);
+        console.log(`📊 followingCollected: ${config.followingCollected}, followersCollected: ${config.followersCollected}`);
+        isProcessing = false;
       }
       
     } catch (error) {
