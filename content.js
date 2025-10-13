@@ -249,23 +249,25 @@
     return false;
   }
   
-  // Check for "Try Again Later" error with specific CSS classes
+  // Check for "Try Again Later" or rate limit errors with specific CSS classes
   function checkForTryAgainLaterError() {
-    // Look for the specific "Try Again Later" heading with the provided CSS classes
-    const tryAgainSelectors = [
+    // Look for the specific "Try Again Later" or "Your request is pending" headings
+    const errorHeadingSelectors = [
       'h3.x1lliihq.x1plvlek.xryxfnj.x1n2onr6.xyejjpt.x15dsfln.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.x1ms8i2q.xo1l8bm.x5n08af.x4zkp8e.xw06pyt.x10wh9bi.xpm28yp.x8viiok.x1o7cslx',
       'h3[class*="x1lliihq"][class*="x1plvlek"][class*="xryxfnj"]',
       'h3[dir="auto"][tabindex="-1"]'
     ];
     
-    for (const selector of tryAgainSelectors) {
+    for (const selector of errorHeadingSelectors) {
       const elements = document.querySelectorAll(selector);
       for (const element of elements) {
         const text = element.textContent.trim();
+        
+        // Check for "Try Again Later" error
         if (text === 'Try Again Later') {
           console.log(`🚨 TRY AGAIN LATER ERROR DETECTED: "${text}"`);
           
-          // Also check for the description text to confirm it's the right error
+          // Check for confirmation description
           const descriptionSelectors = [
             'span.x1lliihq.x1plvlek.xryxfnj.x1n2onr6.xyejjpt.x15dsfln.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x1roi4f4.x1tu3fi.x3x7a5m.x10wh9bi.xpm28yp.x8viiok.x1o7cslx',
             'span[class*="x1lliihq"][class*="x1plvlek"][class*="xryxfnj"]',
@@ -280,7 +282,7 @@
               if (descText.includes('We limit how often you can do certain things') || 
                   descText.includes('protect our community')) {
                 foundDescription = true;
-                console.log(`✅ Confirmed description found: "${descText}"`);
+                console.log(`✅ Rate limit description confirmed: "${descText}"`);
                 break;
               }
             }
@@ -288,19 +290,51 @@
           }
           
           if (foundDescription) {
-            console.log('🚨 TRY AGAIN LATER ERROR CONFIRMED - Initiating 6-hour break');
+            console.log('🚨 RATE LIMIT ERROR CONFIRMED - Initiating 4-hour break');
+            return true;
+          }
+        }
+        
+        // Check for "Your request is pending" error (also a rate limit indicator)
+        if (text === 'Your request is pending') {
+          console.log(`🚨 REQUEST PENDING ERROR DETECTED: "${text}"`);
+          
+          // Check for confirmation description
+          const descriptionSelectors = [
+            'span.x1lliihq.x1plvlek.xryxfnj.x1n2onr6.xyejjpt.x15dsfln.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x1roi4f4.x1tu3fi.x3x7a5m.x10wh9bi.xpm28yp.x8viiok.x1o7cslx',
+            'span[class*="x1lliihq"][class*="x1plvlek"][class*="xryxfnj"]',
+            'span[dir="auto"]'
+          ];
+          
+          let foundDescription = false;
+          for (const descSelector of descriptionSelectors) {
+            const descElements = document.querySelectorAll(descSelector);
+            for (const descElement of descElements) {
+              const descText = descElement.textContent.trim();
+              if (descText.includes('Some accounts prefer to manually review') || 
+                  descText.includes('Let us know if you think we made a mistake')) {
+                foundDescription = true;
+                console.log(`✅ Request pending description confirmed: "${descText}"`);
+                break;
+              }
+            }
+            if (foundDescription) break;
+          }
+          
+          if (foundDescription) {
+            console.log('🚨 REQUEST PENDING ERROR CONFIRMED - Initiating 4-hour break');
             return true;
           }
         }
       }
     }
     
-    // Also check for any heading with "Try Again Later" text as fallback
+    // Fallback: check all headings for error text
     const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, div[role="heading"]');
     for (const heading of allHeadings) {
       const text = heading.textContent.trim();
-      if (text === 'Try Again Later') {
-        console.log(`🚨 TRY AGAIN LATER ERROR DETECTED (fallback): "${text}"`);
+      if (text === 'Try Again Later' || text === 'Your request is pending') {
+        console.log(`🚨 RATE LIMIT ERROR DETECTED (fallback): "${text}"`);
         return true;
       }
     }
