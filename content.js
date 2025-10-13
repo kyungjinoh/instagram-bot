@@ -215,6 +215,40 @@
     return false;
   }
   
+  // Check for "no followers" message in followers dialog
+  function checkForNoFollowersMessage() {
+    // Look for the specific "You'll see all the people who follow you here" message
+    const noFollowersSelectors = [
+      'span.x1lliihq.x1plvlek.xryxfnj.x1n2onr6.xyejjpt.x15dsfln.x193iq5w.xeuugli.x1fj9vlw.x13faqbe.x1vvkbs.x1s928wv.xhkezso.x1gmr53x.x1cpjm7i.x1fgarty.x1943h6x.x1i0vuye.xvs91rp.xo1l8bm.x5n08af.x1tu3fi.x3x7a5m.x10wh9bi.xpm28yp.x8viiok.x1o7cslx',
+      'span[class*="x1lliihq"][class*="x1plvlek"][class*="xryxfnj"]',
+      'span[dir="auto"]'
+    ];
+    
+    for (const selector of noFollowersSelectors) {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        const text = element.textContent.trim();
+        if (text === "You'll see all the people who follow you here." || 
+            text === "You'll see all the people who follow you here") {
+          console.log(`🚨 NO FOLLOWERS MESSAGE DETECTED: "${text}"`);
+          return true;
+        }
+      }
+    }
+    
+    // Fallback: check all spans
+    const allSpans = document.querySelectorAll('span');
+    for (const span of allSpans) {
+      const text = span.textContent.trim();
+      if (text.includes("You'll see all the people who follow you here")) {
+        console.log(`🚨 NO FOLLOWERS MESSAGE DETECTED (fallback): "${text}"`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
   // Check for "Try Again Later" error with specific CSS classes
   function checkForTryAgainLaterError() {
     // Look for the specific "Try Again Later" heading with the provided CSS classes
@@ -1082,6 +1116,13 @@
       return;
     }
     
+    // Check for "no followers" message in followers dialog
+    if (checkForNoFollowersMessage()) {
+      console.log('🚨 No followers message detected - account has no followers, taking 6-hour break');
+      await handle6HourBreak();
+      return;
+    }
+    
     // Check for daily limit popup (works for both Phase 1 and Phase 2)
     if (checkAndCloseDailyLimitPopup()) {
       // If daily limit popup was detected and closed, wait a bit before continuing
@@ -1623,6 +1664,11 @@
         return;
       }
       
+      // ============= SCHOOL PHASE (PHASE 1) =============
+      // States 1-4 are only for school phase
+      
+      if (config.phase === 'school' && currentAccount) {
+        
       // State 1: On account page, need to click followers
       if (currentUrl.includes(`instagram.com/${currentAccount}`) && !currentUrl.includes('/followers')) {
         await randomDelay(2000, 4000);
@@ -1675,7 +1721,7 @@
       }
       
       // State 3: Followers collected, start visiting them
-      else if (config.followersCollected && config.currentFollowerIndex < config.currentAccountFollowers.length) {
+      if (config.followersCollected && config.currentFollowerIndex < config.currentAccountFollowers.length) {
         // Check if we're on a profile page (not the main account or followers page)
         const currentAccount = config.instagramIds[config.currentAccountIndex];
         const onProfilePage = currentUrl.match(/instagram\.com\/[a-zA-Z0-9._]+\/?$/) && 
@@ -1874,12 +1920,14 @@
         }
       }
       
-      // State 4: All followers processed for this account
-      else if (config.followersCollected && config.currentFollowerIndex >= config.currentAccountFollowers.length) {
-        console.log('All followers processed for this account');
+      // State 4: All followers processed for this account (SCHOOL PHASE ONLY)
+      if (config.followersCollected && config.currentFollowerIndex >= config.currentAccountFollowers.length) {
+        console.log('All followers processed for this school account');
         await moveToNextAccount();
         return;
       }
+      
+      } // End of school phase block
       
       // ============= FOLLOWING EXPANSION PHASE =============
       // Process accounts from own following list
